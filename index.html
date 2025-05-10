@@ -3,108 +3,9 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR Text Installation with Message Board</title>
-    
-    <!-- Load A-Frame first -->
+    <title>Flourish AR Installation</title>
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    
-    <!-- Add debug output -->
-    <script>
-        console.log("Starting application...");
-        
-        window.addEventListener('error', function(event) {
-            console.error('Global error:', event.message, event.filename, event.lineno);
-        });
-    </script>
-    
-    <!-- Load AR.js after A-Frame -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    
-    <!-- 3D Text component -->
-    <script>
-        AFRAME.registerComponent('three-d-text', {
-            schema: {
-                value: {type: 'string', default: ''},
-                color: {type: 'color', default: '#ffffff'},
-                depth: {type: 'number', default: 0.1},
-                align: {type: 'string', default: 'center'},
-                width: {type: 'number', default: 5},
-                height: {type: 'number', default: 1.5}
-            },
-            
-            init: function() {
-                this.createText();
-            },
-            
-            update: function() {
-                this.createText();
-            },
-            
-            createText: function() {
-                // Clear any existing content
-                while (this.el.firstChild) {
-                    this.el.removeChild(this.el.firstChild);
-                }
-                
-                // Create main background
-                const background = document.createElement('a-plane');
-                background.setAttribute('width', this.data.width);
-                background.setAttribute('height', this.data.height);
-                background.setAttribute('color', '#236969');
-                background.setAttribute('opacity', '0.8');
-                background.setAttribute('position', {x: 0, y: 0, z: -0.05});
-                this.el.appendChild(background);
-                
-                // Split text into individual characters for 3D effect
-                const text = this.data.value;
-                const letterSpacing = 0.15;
-                const startX = -(text.length * letterSpacing) / 2;
-                
-                // Create each character with depth
-                for (let i = 0; i < text.length; i++) {
-                    if (text[i] === ' ') continue;
-                    
-                    const char = text[i];
-                    const posX = startX + i * letterSpacing;
-                    
-                    // Front letter
-                    const frontLetter = document.createElement('a-text');
-                    frontLetter.setAttribute('value', char);
-                    frontLetter.setAttribute('color', this.data.color);
-                    frontLetter.setAttribute('align', 'center');
-                    frontLetter.setAttribute('width', 0.8);
-                    frontLetter.setAttribute('position', {x: posX, y: 0, z: 0.01});
-                    this.el.appendChild(frontLetter);
-                    
-                    // Side/extrusion effect - multiple layers
-                    for (let depth = 1; depth <= 5; depth++) {
-                        const depthText = document.createElement('a-text');
-                        depthText.setAttribute('value', char);
-                        depthText.setAttribute('color', '#1a4d4d'); // Darker shade for sides
-                        depthText.setAttribute('align', 'center');
-                        depthText.setAttribute('width', 0.8);
-                        depthText.setAttribute('position', {
-                            x: posX, 
-                            y: 0, 
-                            z: 0.01 - (depth * this.data.depth / 5)
-                        });
-                        this.el.appendChild(depthText);
-                    }
-                }
-                
-                // Add lighting to enhance 3D effect
-                const light = document.createElement('a-light');
-                light.setAttribute('type', 'directional');
-                light.setAttribute('intensity', 0.8);
-                light.setAttribute('position', {x: 1, y: 1, z: 1});
-                this.el.appendChild(light);
-            }
-        });
-    </script>
-    
-    <!-- Firebase -->
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
     <style>
         .arjs-loader {
@@ -131,29 +32,6 @@
             font-family: Arial, Helvetica, sans-serif;
         }
         
-        #camera-permission-error {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(255, 0, 0, 0.7);
-            color: white;
-            text-align: center;
-            padding: 10px 0;
-            z-index: 1001;
-            display: none;
-        }
-        
-        #camera-retry-button {
-            background: white;
-            color: black;
-            border: none;
-            padding: 8px 16px;
-            margin-top: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        
         #messageForm {
             position: fixed;
             bottom: 20px;
@@ -170,7 +48,7 @@
         #messageForm h3 {
             margin-top: 0;
             text-align: center;
-            color: #236969;
+            color: #472183;
         }
         
         #messageForm input, #messageForm button {
@@ -183,7 +61,7 @@
         }
         
         #messageForm button {
-            background: #236969;
+            background: #472183;
             color: white;
             border: none;
             cursor: pointer;
@@ -193,7 +71,7 @@
             position: fixed;
             bottom: 10px;
             right: 10px;
-            background: #236969;
+            background: #472183;
             color: white;
             border: none;
             padding: 10px;
@@ -204,135 +82,205 @@
             font-size: 20px;
             cursor: pointer;
         }
-        
-        #debug-info {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            font-family: monospace;
-            padding: 5px;
-            font-size: 12px;
-            z-index: 1000;
-            max-width: 80%;
-            display: none;
-        }
     </style>
-</head>
-<body style="margin: 0; overflow: hidden;">
-    <!-- Debug information -->
-    <div id="debug-info"></div>
-    
-    <!-- Camera permission error message -->
-    <div id="camera-permission-error">
-        <p>Camera access denied. Please enable camera access in your browser settings to use this AR experience.</p>
-        <button id="camera-retry-button">Try Again</button>
-    </div>
-    
-    <div class="arjs-loader">
-        <div>
-            <h1>AR Art Installation</h1>
-            <p>Please allow camera and location access when prompted.</p>
-            <p>If nothing happens, please check your browser permissions.</p>
-        </div>
-    </div>
-    
-    <!-- Message Form -->
-    <form id="messageForm">
-        <h3>Share Your Thoughts</h3>
-        <input type="text" id="nameInput" placeholder="Your Name" required>
-        <input type="text" id="messageInput" placeholder="Your Message" required>
-        <button type="button" id="submitMessage">Submit</button>
-    </form>
-    
-    <!-- Toggle Form Button -->
-    <button class="toggle-form" id="toggleForm">+</button>
-    
-    <a-scene 
-        vr-mode-ui="enabled: false"
-        embedded
-        arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;'
-        renderer="logarithmicDepthBuffer: true; precision: mediump;"
-        loading-screen="enabled: false"
-        debug>
-        
-        <!-- Main text with 3D effect -->
-        <a-entity 
-            id="textArtifact"
-            position="0 0.8 -2"
-            rotation="0 0 0"
-            three-d-text="value: WHAT BRINGS YOU JOY?; color: #ffffff; depth: 0.05; width: 2; height: 0.7">
-        </a-entity>
-        
-        <!-- Message board positioned well below the text to avoid overlap -->
-        <a-entity id="messageBoard" position="0 -0.5 -2"></a-entity>
-        
-        <!-- Camera with mouse/touch cursor -->
-        <a-entity camera look-controls>
-            <a-entity cursor="fuse: false"
-                      position="0 0 -1"
-                      geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
-                      material="color: white; shader: flat">
-            </a-entity>
-        </a-entity>
-    </a-scene>
     
     <script>
-        console.log("Initializing script...");
+        // Register flower component
+        AFRAME.registerComponent('flower', {
+            schema: {
+                color: {type: 'color', default: '#ff8a8a'},
+                size: {type: 'number', default: 0.3},
+                position: {type: 'vec3'},
+                rotation: {type: 'vec3'}
+            },
+            
+            init: function() {
+                const data = this.data;
+                const el = this.el;
+                
+                // Create flower center
+                const center = document.createElement('a-sphere');
+                center.setAttribute('color', '#f3e661');
+                center.setAttribute('radius', data.size * 0.15);
+                center.setAttribute('position', '0 0 0');
+                el.appendChild(center);
+                
+                // Create petals
+                const petalCount = 8;
+                for (let i = 0; i < petalCount; i++) {
+                    const angle = (i / petalCount) * Math.PI * 2;
+                    const x = Math.cos(angle) * data.size * 0.4;
+                    const y = Math.sin(angle) * data.size * 0.4;
+                    
+                    const petal = document.createElement('a-ellipsoid');
+                    petal.setAttribute('scale', {
+                        x: data.size * 0.3,
+                        y: data.size * 0.4,
+                        z: data.size * 0.1
+                    });
+                    petal.setAttribute('position', {x, y, z: 0});
+                    petal.setAttribute('rotation', {
+                        x: 0, 
+                        y: 0, 
+                        z: (angle * 180 / Math.PI)
+                    });
+                    petal.setAttribute('color', data.color);
+                    petal.setAttribute('material', 'roughness: 0.8; metalness: 0.2');
+                    
+                    el.appendChild(petal);
+                }
+                
+                // Position and rotate the entire flower
+                if (data.position) {
+                    el.setAttribute('position', data.position);
+                }
+                if (data.rotation) {
+                    el.setAttribute('rotation', data.rotation);
+                }
+                
+                // Add subtle animation
+                el.setAttribute('animation', {
+                    property: 'rotation',
+                    dur: 8000 + Math.random() * 4000,
+                    easing: 'easeInOutSine',
+                    loop: true,
+                    to: `${Math.random() * 10 - 5} ${Math.random() * 10 - 5} ${Math.random() * 10 - 5}`
+                });
+            }
+        });
         
-        // Firebase configuration
-        // IMPORTANT: Replace with your own Firebase config!
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
+        // Register leaf component
+        AFRAME.registerComponent('leaf', {
+            schema: {
+                color: {type: 'color', default: '#8b65e4'},
+                size: {type: 'number', default: 0.3},
+                position: {type: 'vec3'},
+                rotation: {type: 'vec3'}
+            },
+            
+            init: function() {
+                const data = this.data;
+                const el = this.el;
+                
+                // Create leaf shape
+                const leaf = document.createElement('a-entity');
+                leaf.setAttribute('geometry', {
+                    primitive: 'plane',
+                    width: data.size,
+                    height: data.size * 2
+                });
+                
+                // Apply material with leaf texture via SVG path
+                const svgData = `
+                    <svg viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M50,0 C100,50 100,150 50,200 C0,150 0,50 50,0 Z" fill="${data.color}" />
+                        <path d="M50,10 L50,190" stroke="#000" stroke-width="1" stroke-opacity="0.2" />
+                    </svg>`;
+                
+                const svgBlob = new Blob([svgData], {type: 'image/svg+xml'});
+                const svgUrl = URL.createObjectURL(svgBlob);
+                
+                leaf.setAttribute('material', {
+                    src: svgUrl,
+                    transparent: true,
+                    alphaTest: 0.5,
+                    roughness: 0.7,
+                    metalness: 0.2
+                });
+                
+                el.appendChild(leaf);
+                
+                // Position and rotate
+                if (data.position) {
+                    el.setAttribute('position', data.position);
+                }
+                if (data.rotation) {
+                    el.setAttribute('rotation', data.rotation);
+                }
+                
+                // Add subtle animation
+                el.setAttribute('animation', {
+                    property: 'rotation',
+                    dur: 10000 + Math.random() * 5000,
+                    easing: 'easeInOutSine',
+                    loop: true,
+                    to: `${data.rotation.x + Math.random() * 10 - 5} ${data.rotation.y + Math.random() * 10 - 5} ${data.rotation.z + Math.random() * 10 - 5}`
+                });
+            }
+        });
         
-        let fbInitialized = false;
-        try {
-            // Initialize Firebase
-            firebase.initializeApp(firebaseConfig);
-            const db = firebase.firestore();
-            const messagesCollection = db.collection('messages');
-            fbInitialized = true;
-            console.log("Firebase initialized successfully");
-        } catch (error) {
-            console.error("Firebase initialization error:", error);
-            showDebugInfo("Firebase error: " + error.message);
-        }
+        // Flourish text component - creates stylized 3D text
+        AFRAME.registerComponent('flourish-text', {
+            init: function() {
+                const el = this.el;
+                
+                // Create 3D text parts for stylized look
+                const createTextPart = (yOffset, zOffset, color, opacity) => {
+                    const text = document.createElement('a-text');
+                    text.setAttribute('value', 'Flourish');
+                    text.setAttribute('color', color);
+                    text.setAttribute('opacity', opacity);
+                    text.setAttribute('position', `0 ${yOffset} ${zOffset}`);
+                    text.setAttribute('align', 'center');
+                    text.setAttribute('width', 8);
+                    text.setAttribute('font', 'https://cdn.aframe.io/fonts/Aileron-Semibold.fnt');
+                    return text;
+                };
+                
+                // Main text (white)
+                const mainText = createTextPart(0, 0, '#ffffff', 1.0);
+                mainText.setAttribute('scale', '1.2 1.2 1.2');
+                el.appendChild(mainText);
+                
+                // Shadow/outline (adds depth)
+                const shadow1 = createTextPart(0, -0.01, '#ff8fab', 0.7);
+                shadow1.setAttribute('scale', '1.22 1.22 1.22');
+                el.appendChild(shadow1);
+                
+                const shadow2 = createTextPart(0, -0.02, '#472183', 0.5);
+                shadow2.setAttribute('scale', '1.24 1.24 1.24');
+                el.appendChild(shadow2);
+                
+                // Add subtle floating animation
+                el.setAttribute('animation', {
+                    property: 'position',
+                    dur: 6000,
+                    dir: 'alternate',
+                    easing: 'easeInOutSine',
+                    loop: true,
+                    from: '0 0 0',
+                    to: '0 0.05 0'
+                });
+            }
+        });
         
-        // Add message component
-        let messageY = 0;
+        // Message board system
         let messages = [];
-        const MAX_MESSAGES = 5; // Limit visible messages to avoid overcrowding
+        const MAX_MESSAGES = 5;
         
         function addMessage(name, text) {
             const messageBoard = document.getElementById('messageBoard');
             
             // Create message group
             const messageEntity = document.createElement('a-entity');
-            messageEntity.setAttribute('position', {x: 0, y: messageY, z: 0});
             messageEntity.setAttribute('class', 'message');
             
-            // Create message background with slight 3D effect
+            // Create message background with curved shape
             const background = document.createElement('a-box');
             background.setAttribute('width', 2);
             background.setAttribute('height', 0.25);
-            background.setAttribute('depth', 0.03);
+            background.setAttribute('depth', 0.02);
+            background.setAttribute('radius', 0.1);
             background.setAttribute('color', '#ffffff');
             background.setAttribute('opacity', 0.8);
-            background.setAttribute('position', {x: 0, y: 0, z: -0.015});
+            background.setAttribute('position', {x: 0, y: 0, z: -0.01});
             background.setAttribute('material', 'shader: standard; roughness: 0.3; metalness: 0.2');
             messageEntity.appendChild(background);
             
             // Add name text
             const nameText = document.createElement('a-text');
-            nameText.setAttribute('value', name + ": ");
-            nameText.setAttribute('color', '#236969');
+            nameText.setAttribute('value', name + ":");
+            nameText.setAttribute('color', '#472183');
             nameText.setAttribute('width', 1.8);
             nameText.setAttribute('position', {x: -0.9, y: 0.05, z: 0.01});
             nameText.setAttribute('align', 'left');
@@ -365,37 +313,23 @@
             repositionMessages();
         }
         
-        // Reposition all messages to prevent overlap
+        // Reposition all messages to avoid overlap
         function repositionMessages() {
-            // Limit number of visible messages
             if (messages.length > MAX_MESSAGES) {
-                // Remove oldest message
                 const oldestMessage = messages.shift();
                 if (oldestMessage.parentNode) {
                     oldestMessage.parentNode.removeChild(oldestMessage);
                 }
             }
             
-            // Reposition remaining messages
             messages.forEach((msg, index) => {
-                // Position each message below the previous one
                 const yPos = -0.3 * index;
                 msg.setAttribute('position', {x: 0, y: yPos, z: 0});
             });
         }
         
-        // Debug helper
-        function showDebugInfo(text) {
-            const debugDiv = document.getElementById('debug-info');
-            debugDiv.style.display = 'block';
-            debugDiv.innerHTML += text + '<br>';
-        }
-        
-        // DOM loaded
+        // DOM loaded handler
         document.addEventListener('DOMContentLoaded', function() {
-            console.log("DOM Content Loaded");
-            showDebugInfo("DOM loaded");
-            
             const toggleFormButton = document.getElementById('toggleForm');
             const messageForm = document.getElementById('messageForm');
             const nameInput = document.getElementById('nameInput');
@@ -403,46 +337,26 @@
             const submitButton = document.getElementById('submitMessage');
             const arjsLoader = document.querySelector('.arjs-loader');
             
-            // Request camera permission
+            // Auto-request camera
             requestCameraPermission();
             
             function requestCameraPermission() {
-                console.log("Requesting camera permission...");
-                showDebugInfo("Requesting camera...");
-                
                 navigator.mediaDevices.getUserMedia({ video: true, audio: false })
                     .then(function(stream) {
                         console.log("Camera access granted");
-                        showDebugInfo("Camera OK");
                         
                         // Hide loader after delay
                         setTimeout(() => {
                             arjsLoader.style.display = 'none';
                         }, 3000);
                         
-                        // Stop our test stream as AR.js will handle the camera
-                        const tracks = stream.getTracks();
-                        tracks.forEach(track => track.stop());
+                        // Stop the test stream
+                        stream.getTracks().forEach(track => track.stop());
                     })
                     .catch(function(error) {
                         console.error("Camera access error:", error);
-                        showDebugInfo("Camera error: " + error.message);
-                        
-                        // Show error message
-                        const errorDiv = document.getElementById('camera-permission-error');
-                        errorDiv.style.display = 'block';
-                        arjsLoader.style.display = 'none';
+                        alert("Camera access is required for this AR experience. Please reload and allow camera access.");
                     });
-            }
-            
-            // Camera retry button
-            const cameraRetryButton = document.getElementById('camera-retry-button');
-            if (cameraRetryButton) {
-                cameraRetryButton.addEventListener('click', function() {
-                    const errorDiv = document.getElementById('camera-permission-error');
-                    errorDiv.style.display = 'none';
-                    requestCameraPermission();
-                });
             }
             
             // Toggle form button
@@ -458,24 +372,7 @@
                 const message = messageInput.value.trim();
                 
                 if (name && message) {
-                    // Add message to display immediately
                     addMessage(name, message);
-                    
-                    // Add to Firebase if initialized
-                    if (fbInitialized) {
-                        messagesCollection.add({
-                            name: name,
-                            message: message,
-                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                        })
-                        .then(() => {
-                            console.log("Message saved to Firebase");
-                        })
-                        .catch((error) => {
-                            console.error("Error adding message:", error);
-                            showDebugInfo("Save error: " + error.message);
-                        });
-                    }
                     
                     // Clear form and hide
                     messageInput.value = '';
@@ -484,19 +381,93 @@
                     alert("Please enter your name and message!");
                 }
             });
-            
-            // Add some test messages after delay
-            setTimeout(() => {
-                addMessage("Test User", "This is a test message!");
-                addMessage("Another User", "Enjoying this AR installation!");
-            }, 5000);
-        });
-        
-        // Scene loaded event
-        document.querySelector('a-scene').addEventListener('loaded', function () {
-            console.log("A-Frame scene loaded");
-            showDebugInfo("Scene loaded");
         });
     </script>
+</head>
+<body style="margin: 0; overflow: hidden;">
+    <div class="arjs-loader">
+        <div>
+            <h1>Flourish AR Installation</h1>
+            <p>Loading... Please allow camera access when prompted.</p>
+        </div>
+    </div>
+    
+    <!-- Message Form -->
+    <form id="messageForm">
+        <h3>Share Your Thoughts</h3>
+        <input type="text" id="nameInput" placeholder="Your Name" required>
+        <input type="text" id="messageInput" placeholder="Your Message" required>
+        <button type="button" id="submitMessage">Submit</button>
+    </form>
+    
+    <!-- Toggle Form Button -->
+    <button class="toggle-form" id="toggleForm">+</button>
+    
+    <a-scene 
+        vr-mode-ui="enabled: false"
+        embedded
+        arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;'
+        renderer="logarithmicDepthBuffer: true; precision: mediump; colorManagement: true;"
+        loading-screen="enabled: false">
+        
+        <!-- Purple background -->
+        <a-plane 
+            position="0 0 -6" 
+            rotation="0 0 0" 
+            width="12" 
+            height="9" 
+            color="#2e1a47" 
+            opacity="0.95"
+            material="side: double">
+        </a-plane>
+        
+        <!-- Flourish Text -->
+        <a-entity 
+            position="0 0.5 -4" 
+            scale="1.5 1.5 1.5"
+            flourish-text>
+        </a-entity>
+        
+        <!-- Flowers and decorative elements -->
+        <a-entity position="0 0 -4">
+            <!-- Pink/Coral flowers -->
+            <a-entity flower="color: #ff8a8a; size: 0.7; position: -2.2 1.2 0; rotation: 0 0 20"></a-entity>
+            <a-entity flower="color: #ff8a8a; size: 0.6; position: 1.8 1.0 0.1; rotation: 0 0 -15"></a-entity>
+            <a-entity flower="color: #ff8a8a; size: 0.5; position: -1.2 -1.0 0.2; rotation: 0 0 30"></a-entity>
+            
+            <!-- Blue/Purple flowers -->
+            <a-entity flower="color: #a19bff; size: 0.65; position: 1.4 -0.8 0.1; rotation: 0 0 10"></a-entity>
+            <a-entity flower="color: #a19bff; size: 0.7; position: -0.4 1.4 0.2; rotation: 0 0 -25"></a-entity>
+            
+            <!-- Purple leaves -->
+            <a-entity leaf="color: #8b65e4; size: 0.6; position: -1.8 0.5 -0.1; rotation: 0 0 45"></a-entity>
+            <a-entity leaf="color: #8b65e4; size: 0.5; position: 2.1 0.3 -0.1; rotation: 0 0 -60"></a-entity>
+            <a-entity leaf="color: #8b65e4; size: 0.55; position: 1.0 1.2 -0.1; rotation: 0 0 30"></a-entity>
+            <a-entity leaf="color: #8b65e4; size: 0.4; position: -0.8 -0.8 -0.1; rotation: 0 0 -40"></a-entity>
+            <a-entity leaf="color: #8b65e4; size: 0.5; position: 0 -1.2 -0.1; rotation: 0 0 10"></a-entity>
+            
+            <!-- Yellow accent dots -->
+            <a-sphere color="#f3e661" radius="0.12" position="-1.8 0.8 0.3" opacity="0.9"></a-sphere>
+            <a-sphere color="#f3e661" radius="0.1" position="1.6 0.6 0.3" opacity="0.9"></a-sphere>
+            <a-sphere color="#f3e661" radius="0.11" position="0.5 -1.0 0.3" opacity="0.9"></a-sphere>
+            
+            <!-- Pink small circles -->
+            <a-ring color="#ff8fab" radius-inner="0.08" radius-outer="0.12" position="-1.2 0.6 0.2" opacity="0.8"></a-ring>
+            <a-ring color="#ff8fab" radius-inner="0.06" radius-outer="0.09" position="1.0 -0.5 0.2" opacity="0.8"></a-ring>
+            <a-ring color="#ff8fab" radius-inner="0.05" radius-outer="0.08" position="2.2 0.9 0.2" opacity="0.8"></a-ring>
+        </a-entity>
+        
+        <!-- Message board positioned below the text -->
+        <a-entity id="messageBoard" position="0 -1.2 -4"></a-entity>
+        
+        <!-- Camera and cursor -->
+        <a-entity camera look-controls position="0 0 0">
+            <a-entity cursor="fuse: false"
+                      position="0 0 -1"
+                      geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                      material="color: white; shader: flat">
+            </a-entity>
+        </a-entity>
+    </a-scene>
 </body>
 </html>
