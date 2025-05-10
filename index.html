@@ -20,49 +20,84 @@
     <!-- Load AR.js after A-Frame -->
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
-    <!-- Add simple text component instead of text-geometry that requires fonts -->
+    <!-- 3D Text component -->
     <script>
-        AFRAME.registerComponent('simple-text', {
+        AFRAME.registerComponent('three-d-text', {
             schema: {
                 value: {type: 'string', default: ''},
-                color: {type: 'color', default: '#000'},
+                color: {type: 'color', default: '#ffffff'},
+                depth: {type: 'number', default: 0.1},
                 align: {type: 'string', default: 'center'},
                 width: {type: 'number', default: 5},
                 height: {type: 'number', default: 1.5}
             },
             
             init: function() {
-                this.createTextEntity();
+                this.createText();
             },
             
             update: function() {
-                this.createTextEntity();
+                this.createText();
             },
             
-            createTextEntity: function() {
-                // Remove old entity if exists
-                if (this.textEntity) {
-                    this.el.removeChild(this.textEntity);
+            createText: function() {
+                // Clear any existing content
+                while (this.el.firstChild) {
+                    this.el.removeChild(this.el.firstChild);
                 }
                 
-                // Create background plane
+                // Create main background
                 const background = document.createElement('a-plane');
                 background.setAttribute('width', this.data.width);
                 background.setAttribute('height', this.data.height);
                 background.setAttribute('color', '#236969');
                 background.setAttribute('opacity', '0.8');
+                background.setAttribute('position', {x: 0, y: 0, z: -0.05});
                 this.el.appendChild(background);
                 
-                // Create text
-                this.textEntity = document.createElement('a-text');
-                this.textEntity.setAttribute('value', this.data.value);
-                this.textEntity.setAttribute('color', '#ffffff');
-                this.textEntity.setAttribute('width', this.data.width * 2);
-                this.textEntity.setAttribute('align', this.data.align);
-                this.textEntity.setAttribute('position', {x: 0, y: 0, z: 0.01});
-                this.textEntity.setAttribute('wrap-count', 30);
+                // Split text into individual characters for 3D effect
+                const text = this.data.value;
+                const letterSpacing = 0.15;
+                const startX = -(text.length * letterSpacing) / 2;
                 
-                this.el.appendChild(this.textEntity);
+                // Create each character with depth
+                for (let i = 0; i < text.length; i++) {
+                    if (text[i] === ' ') continue;
+                    
+                    const char = text[i];
+                    const posX = startX + i * letterSpacing;
+                    
+                    // Front letter
+                    const frontLetter = document.createElement('a-text');
+                    frontLetter.setAttribute('value', char);
+                    frontLetter.setAttribute('color', this.data.color);
+                    frontLetter.setAttribute('align', 'center');
+                    frontLetter.setAttribute('width', 0.8);
+                    frontLetter.setAttribute('position', {x: posX, y: 0, z: 0.01});
+                    this.el.appendChild(frontLetter);
+                    
+                    // Side/extrusion effect - multiple layers
+                    for (let depth = 1; depth <= 5; depth++) {
+                        const depthText = document.createElement('a-text');
+                        depthText.setAttribute('value', char);
+                        depthText.setAttribute('color', '#1a4d4d'); // Darker shade for sides
+                        depthText.setAttribute('align', 'center');
+                        depthText.setAttribute('width', 0.8);
+                        depthText.setAttribute('position', {
+                            x: posX, 
+                            y: 0, 
+                            z: 0.01 - (depth * this.data.depth / 5)
+                        });
+                        this.el.appendChild(depthText);
+                    }
+                }
+                
+                // Add lighting to enhance 3D effect
+                const light = document.createElement('a-light');
+                light.setAttribute('type', 'directional');
+                light.setAttribute('intensity', 0.8);
+                light.setAttribute('position', {x: 1, y: 1, z: 1});
+                this.el.appendChild(light);
             }
         });
     </script>
@@ -222,16 +257,16 @@
         loading-screen="enabled: false"
         debug>
         
-        <!-- Main text -->
+        <!-- Main text with 3D effect -->
         <a-entity 
             id="textArtifact"
-            position="0 0 -2"
+            position="0 0.8 -2"
             rotation="0 0 0"
-            simple-text="value: WHAT BRINGS YOU JOY?; color: #ffffff; align: center; width: 2; height: 0.7">
+            three-d-text="value: WHAT BRINGS YOU JOY?; color: #ffffff; depth: 0.05; width: 2; height: 0.7">
         </a-entity>
         
-        <!-- Message board positioned below the text -->
-        <a-entity id="messageBoard" position="0 -1 -2"></a-entity>
+        <!-- Message board positioned well below the text to avoid overlap -->
+        <a-entity id="messageBoard" position="0 -0.5 -2"></a-entity>
         
         <!-- Camera with mouse/touch cursor -->
         <a-entity camera look-controls>
@@ -272,6 +307,8 @@
         
         // Add message component
         let messageY = 0;
+        let messages = [];
+        const MAX_MESSAGES = 5; // Limit visible messages to avoid overcrowding
         
         function addMessage(name, text) {
             const messageBoard = document.getElementById('messageBoard');
@@ -279,13 +316,17 @@
             // Create message group
             const messageEntity = document.createElement('a-entity');
             messageEntity.setAttribute('position', {x: 0, y: messageY, z: 0});
+            messageEntity.setAttribute('class', 'message');
             
-            // Create message background
-            const background = document.createElement('a-plane');
+            // Create message background with slight 3D effect
+            const background = document.createElement('a-box');
             background.setAttribute('width', 2);
             background.setAttribute('height', 0.25);
+            background.setAttribute('depth', 0.03);
             background.setAttribute('color', '#ffffff');
-            background.setAttribute('opacity', 0.7);
+            background.setAttribute('opacity', 0.8);
+            background.setAttribute('position', {x: 0, y: 0, z: -0.015});
+            background.setAttribute('material', 'shader: standard; roughness: 0.3; metalness: 0.2');
             messageEntity.appendChild(background);
             
             // Add name text
@@ -308,10 +349,39 @@
             messageText.setAttribute('scale', {x: 0.3, y: 0.3, z: 0.3});
             messageEntity.appendChild(messageText);
             
-            messageBoard.appendChild(messageEntity);
+            // Add animation for appearing
+            messageEntity.setAttribute('animation', {
+                property: 'scale',
+                from: '0.1 0.1 0.1',
+                to: '1 1 1',
+                dur: 800,
+                easing: 'easeOutElastic'
+            });
             
-            // Update position for next message
-            messageY -= 0.3;
+            messageBoard.appendChild(messageEntity);
+            messages.push(messageEntity);
+            
+            // Reposition all messages
+            repositionMessages();
+        }
+        
+        // Reposition all messages to prevent overlap
+        function repositionMessages() {
+            // Limit number of visible messages
+            if (messages.length > MAX_MESSAGES) {
+                // Remove oldest message
+                const oldestMessage = messages.shift();
+                if (oldestMessage.parentNode) {
+                    oldestMessage.parentNode.removeChild(oldestMessage);
+                }
+            }
+            
+            // Reposition remaining messages
+            messages.forEach((msg, index) => {
+                // Position each message below the previous one
+                const yPos = -0.3 * index;
+                msg.setAttribute('position', {x: 0, y: yPos, z: 0});
+            });
         }
         
         // Debug helper
