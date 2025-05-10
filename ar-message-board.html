@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Text Installation with Message Board</title>
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js"></script>
+    
+    <!-- Firebase App (the core Firebase SDK) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <!-- Firebase Firestore -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <style>
+        .arjs-loader {
+            position: fixed;
+            z-index: 999;
+            overflow: show;
+            margin: auto;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            right: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .arjs-loader div {
+            text-align: center;
+            color: white;
+            max-width: 80%;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        
+        #messageForm {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 10px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #messageForm h3 {
+            margin-top: 0;
+            text-align: center;
+            color: #236969;
+        }
+        
+        #messageForm input, #messageForm button {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+        }
+        
+        #messageForm button {
+            background: #236969;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .toggle-form {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: #236969;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 50%;
+            z-index: 1000;
+            width: 50px;
+            height: 50px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+    </style>
+
+    <script>
+        // Firebase configuration
+        // IMPORTANT: Replace with your own Firebase config when you create a project!
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const messagesCollection = db.collection('messages');
+        
+        // Custom component for growing plants from text
+        AFRAME.registerComponent('grow-plant', {
+            schema: {
+                delay: {type: 'number', default: 0},
+                duration: {type: 'number', default: 3000},
+                height: {type: 'number', default: 1}
+            },
+            
+            init: function() {
+                const el = this.el;
+                const data = this.data;
+                
+                // Initial setup - start with zero height
+                el.setAttribute('scale', {x: 1, y: 0.01, z: 1});
+                
+                // Start growing after delay
+                setTimeout(() => {
+                    // Create animation for growing
+                    el.setAttribute('animation', {
+                        property: 'scale.y',
+                        to: data.height,
+                        dur: data.duration,
+                        easing: 'easeOutElastic'
+                    });
+                    
+                    // Add some slight movement animation
+                    el.setAttribute('animation__sway', {
+                        property: 'rotation.z',
+                        from: -2,
+                        to: 2,
+                        dir: 'alternate',
+                        dur: 2000 + Math.random() * 1000,
+                        loop: true,
+                        easing: 'easeInOutSine'
+                    });
+                }, data.delay);
+            }
+        });
+        
+        // Create random plant layout
+        AFRAME.registerComponent('plant-system', {
+            schema: {
+                count: {type: 'number', default: 10}
+            },
+            
+            init: function() {
+                const el = this.el;
+                const data = this.data;
+                
+                // Create plants after the scene loads
+                this.el.sceneEl.addEventListener('loaded', () => {
+                    // Create plants
+                    for (let i = 0; i < data.count; i++) {
+                        this.createPlant(el);
+                    }
+                });
+            },
+            
+            createPlant: function(parentEl) {
+                // Random position on the text
+                const xPos = (Math.random() - 0.5) * 2;
+                const zPos = (Math.random() - 0.5) * 0.5;
+                const delay = Math.random() * 2000 + 1000;
+                const height = Math.random() * 0.5 + 0.3;
+                
+                // Create stem
+                const stem = document.createElement('a-entity');
+                stem.setAttribute('position', {x: xPos, y: 0, z: zPos});
+                stem.setAttribute('geometry', {
+                    primitive: 'cylinder',
+                    radius: 0.02,
+                    height: 1
+                });
+                stem.setAttribute('material', {
+                    color: '#3a7d44',
+                    roughness: 0.8
+                });
+                stem.setAttribute('grow-plant', {
+                    delay: delay,
+                    height: height
+                });
+                parentEl.appendChild(stem);
+                
+                // Create leaf or flower at the top
+                const leafType = Math.random() > 0.5 ? 'leaf' : 'flower';
+                if (leafType === 'leaf') {
+                    const leaf = document.createElement('a-entity');
+                    leaf.setAttribute('position', {x: 0, y: 0.5, z: 0});
+                    leaf.setAttribute('geometry', {
+                        primitive: 'cone',
+                        radiusBottom: 0.1,
+                        radiusTop: 0.0,
+                        height: 0.2
+                    });
+                    leaf.setAttribute('material', {
+                        color: '#61b136',
+                        roughness: 0.7
+                    });
+                    leaf.setAttribute('rotation', {x: 90, y: 0, z: 0});
+                    leaf.setAttribute('animation', {
+                        property: 'scale',
+                        from: '0 0 0',
+                        to: '1 1 1',
+                        delay: delay + 500,
+                        dur: 1000,
+                        easing: 'easeOutElastic'
+                    });
+                    stem.appendChild(leaf);
+                } else {
+                    const flower = document.createElement('a-entity');
+                    flower.setAttribute('position', {x: 0, y: 0.5, z: 0});
+                    flower.setAttribute('geometry', {
+                        primitive: 'sphere',
+                        radius: 0.07
+                    });
+                    
+                    // Random flower color
+                    const colors = ['#e04db0', '#e0db4d', '#4de0cb', '#e04d4d', '#4d72e0'];
+                    const flowerColor = colors[Math.floor(Math.random() * colors.length)];
+                    
+                    flower.setAttribute('material', {
+                        color: flowerColor,
+                        roughness: 0.5,
+                        metalness: 0.2
+                    });
+                    flower.setAttribute('animation', {
+                        property: 'scale',
+                        from: '0 0 0',
+                        to: '1 1 1',
+                        delay: delay + 500,
+                        dur: 1000,
+                        easing: 'easeOutElastic'
+                    });
+                    stem.appendChild(flower);
+                }
+            }
+        });
+        
+        // Component to fetch and display messages
+        AFRAME.registerComponent('message-board', {
+            init: function() {
+                this.messagesContainer = this.el;
+                this.messageEntities = [];
+                this.spacing = 0.3; // Vertical spacing between messages
+                
+                // Listen for new messages
+                this.fetchMessages();
+            },
+            
+            fetchMessages: function() {
+                // Clear existing messages first
+                this.messageEntities.forEach(entity => {
+                    if (entity && entity.parentNode) {
+                        entity.parentNode.removeChild(entity);
+                    }
+                });
+                this.messageEntities = [];
+                
+                // Get messages from Firestore
+                messagesCollection.orderBy('timestamp', 'desc').limit(10).get()
+                    .then((querySnapshot) => {
+                        let verticalPosition = 0;
+                        
+                        querySnapshot.forEach((doc, index) => {
+                            const data = doc.data();
+                            this.createMessageEntity(data.name, data.message, verticalPosition);
+                            verticalPosition -= this.spacing;
+                        });
+                    })
+                    .catch((error) => {
+                        console.error("Error getting messages: ", error);
+                    });
+                
+                // Set up real-time listener for new messages
+                messagesCollection.orderBy('timestamp', 'desc').limit(1)
+                    .onSnapshot((snapshot) => {
+                        snapshot.docChanges().forEach((change) => {
+                            if (change.type === "added") {
+                                // Shift all existing messages down
+                                this.messageEntities.forEach(entity => {
+                                    const currentPosition = entity.getAttribute('position');
+                                    entity.setAttribute('position', {
+                                        x: currentPosition.x,
+                                        y: currentPosition.y - this.spacing,
+                                        z: currentPosition.z
+                                    });
+                                });
+                                
+                                // Add new message at the top
+                                const data = change.doc.data();
+                                this.createMessageEntity(data.name, data.message, 0);
+                            }
+                        });
+                    });
+            },
+            
+            createMessageEntity: function(name, text, yPosition) {
+                const messageEntity = document.createElement('a-entity');
+                messageEntity.setAttribute('position', {x: 0, y: yPosition, z: 0});
+                
+                // Message background
+                const background = document.createElement('a-plane');
+                background.setAttribute('width', 3);
+                background.setAttribute('height', 0.25);
+                background.setAttribute('color', '#ffffff');
+                background.setAttribute('opacity', 0.7);
+                background.setAttribute('position', {x: 0, y: 0, z: -0.01});
+                messageEntity.appendChild(background);
+                
+                // Name text
+                const nameText = document.createElement('a-text');
+                nameText.setAttribute('value', name + ":");
+                nameText.setAttribute('color', '#236969');
+                nameText.setAttribute('width', 3);
+                nameText.setAttribute('position', {x: -1.4, y: 0.05, z: 0});
+                nameText.setAttribute('align', 'left');
+                nameText.setAttribute('scale', {x: 0.5, y: 0.5, z: 0.5});
+                messageEntity.appendChild(nameText);
+                
+                // Message text
+                const messageText = document.createElement('a-text');
+                messageText.setAttribute('value', text);
+                messageText.setAttribute('color', '#000000');
+                messageText.setAttribute('width', 5);
+                messageText.setAttribute('position', {x: -1.4, y: -0.05, z: 0});
+                messageText.setAttribute('align', 'left');
+                messageText.setAttribute('scale', {x: 0.4, y: 0.4, z: 0.4});
+                messageEntity.appendChild(messageText);
+                
+                // Add animation for appearing
+                messageEntity.setAttribute('animation', {
+                    property: 'scale',
+                    from: '0 0 0',
+                    to: '1 1 1',
+                    dur: 1000,
+                    easing: 'easeOutElastic'
+                });
+                
+                this.messagesContainer.appendChild(messageEntity);
+                this.messageEntities.unshift(messageEntity);
+                
+                // Limit displayed messages to 10
+                if (this.messageEntities.length > 10) {
+                    const oldestMessage = this.messageEntities.pop();
+                    if (oldestMessage && oldestMessage.parentNode) {
+                        oldestMessage.parentNode.removeChild(oldestMessage);
+                    }
+                }
+            }
+        });
+        
+        // Main app functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggleFormButton = document.getElementById('toggleForm');
+            const messageForm = document.getElementById('messageForm');
+            const nameInput = document.getElementById('nameInput');
+            const messageInput = document.getElementById('messageInput');
+            const submitButton = document.getElementById('submitMessage');
+            
+            // Toggle message form
+            toggleFormButton.addEventListener('click', function() {
+                messageForm.style.display = messageForm.style.display === 'none' ? 'flex' : 'none';
+            });
+            
+            // Submit message
+            submitButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const name = nameInput.value.trim();
+                const message = messageInput.value.trim();
+                
+                if (name && message) {
+                    // Add message to Firestore
+                    messagesCollection.add({
+                        name: name,
+                        message: message,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    })
+                    .then(() => {
+                        // Clear form
+                        messageInput.value = '';
+                        // Hide form after submission
+                        messageForm.style.display = 'none';
+                    })
+                    .catch((error) => {
+                        console.error("Error adding message: ", error);
+                        alert("Error posting message: " + error.message);
+                    });
+                } else {
+                    alert("Please enter your name and message!");
+                }
+            });
+        });
+    </script>
+</head>
+<body style="margin: 0; overflow: hidden;">
+    <div class="arjs-loader">
+        <div>
+            <h1>AR Art Installation</h1>
+            <p>Please allow camera and location access and point your device around you.</p>
+        </div>
+    </div>
+    
+    <!-- Message Form -->
+    <form id="messageForm" style="display: none;">
+        <h3>Share Your Thoughts</h3>
+        <input type="text" id="nameInput" placeholder="Your Name" required>
+        <input type="text" id="messageInput" placeholder="Your Message" required>
+        <button type="button" id="submitMessage">Submit</button>
+    </form>
+    
+    <!-- Toggle Form Button -->
+    <button class="toggle-form" id="toggleForm">+</button>
+    
+    <a-scene 
+        vr-mode-ui="enabled: false"
+        embedded
+        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
+        renderer="logarithmicDepthBuffer: true;">
+        
+        <!-- Main 3D text with plants -->
+        <a-entity 
+            id="textArtifact"
+            gps-entity-place="latitude: 35.9940; longitude: -78.8986" 
+            look-at="[gps-camera]"
+            position="0 1.5 0">
+            
+            <!-- The Question -->
+            <a-entity
+                text-geometry="value: WHAT BRINGS YOU JOY?; font: #optimerBoldFont; size: 0.3; height: 0.05; bevelEnabled: true; bevelSize: 0.01; bevelThickness: 0.01"
+                material="color: #236969; metalness: 0.3; roughness: 0.6"
+                position="-2 0 0">
+            </a-entity>
+            
+            <!-- Plant system that generates plants on the text -->
+            <a-entity plant-system="count: 10"></a-entity>
+            
+            <!-- Message board - positioned below the main text -->
+            <a-entity 
+                id="messageBoard"
+                position="0 -0.7 0"
+                message-board>
+            </a-entity>
+        </a-entity>
+        
+        <!-- Camera -->
+        <a-camera gps-camera rotation-reader></a-camera>
+        
+        <!-- Optimized font for text-geometry -->
+        <a-assets>
+            <a-asset-item id="optimerBoldFont" src="https://cdn.aframe.io/fonts/Exo2Bold.typeface.json"></a-asset-item>
+        </a-assets>
+    </a-scene>
+</body>
+</html>
