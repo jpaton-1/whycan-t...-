@@ -4,13 +4,71 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AR Text Installation with Message Board</title>
-    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/three.js/build/ar-threex-location-only.js"></script>
     
-    <!-- Firebase App (the core Firebase SDK) -->
+    <!-- Load A-Frame first -->
+    <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+    
+    <!-- Add debug output -->
+    <script>
+        console.log("Starting application...");
+        
+        window.addEventListener('error', function(event) {
+            console.error('Global error:', event.message, event.filename, event.lineno);
+        });
+    </script>
+    
+    <!-- Load AR.js after A-Frame -->
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <!-- Add simple text component instead of text-geometry that requires fonts -->
+    <script>
+        AFRAME.registerComponent('simple-text', {
+            schema: {
+                value: {type: 'string', default: ''},
+                color: {type: 'color', default: '#000'},
+                align: {type: 'string', default: 'center'},
+                width: {type: 'number', default: 5},
+                height: {type: 'number', default: 1.5}
+            },
+            
+            init: function() {
+                this.createTextEntity();
+            },
+            
+            update: function() {
+                this.createTextEntity();
+            },
+            
+            createTextEntity: function() {
+                // Remove old entity if exists
+                if (this.textEntity) {
+                    this.el.removeChild(this.textEntity);
+                }
+                
+                // Create background plane
+                const background = document.createElement('a-plane');
+                background.setAttribute('width', this.data.width);
+                background.setAttribute('height', this.data.height);
+                background.setAttribute('color', '#236969');
+                background.setAttribute('opacity', '0.8');
+                this.el.appendChild(background);
+                
+                // Create text
+                this.textEntity = document.createElement('a-text');
+                this.textEntity.setAttribute('value', this.data.value);
+                this.textEntity.setAttribute('color', '#ffffff');
+                this.textEntity.setAttribute('width', this.data.width * 2);
+                this.textEntity.setAttribute('align', this.data.align);
+                this.textEntity.setAttribute('position', {x: 0, y: 0, z: 0.01});
+                this.textEntity.setAttribute('wrap-count', 30);
+                
+                this.el.appendChild(this.textEntity);
+            }
+        });
+    </script>
+    
+    <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <!-- Firebase Firestore -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     
     <style>
@@ -71,8 +129,7 @@
             padding: 10px;
             border-radius: 10px;
             z-index: 1000;
-            display: flex;
-            flex-direction: column;
+            display: none;
         }
         
         #messageForm h3 {
@@ -86,6 +143,8 @@
             padding: 10px;
             border-radius: 5px;
             border: 1px solid #ccc;
+            width: 100%;
+            box-sizing: border-box;
         }
         
         #messageForm button {
@@ -110,361 +169,26 @@
             font-size: 20px;
             cursor: pointer;
         }
+        
+        #debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-family: monospace;
+            padding: 5px;
+            font-size: 12px;
+            z-index: 1000;
+            max-width: 80%;
+            display: none;
+        }
     </style>
-
-    <script>
-        // Firebase configuration
-        // IMPORTANT: Replace with your own Firebase config when you create a project!
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-        
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const messagesCollection = db.collection('messages');
-        
-        // Custom component for growing plants from text
-        AFRAME.registerComponent('grow-plant', {
-            schema: {
-                delay: {type: 'number', default: 0},
-                duration: {type: 'number', default: 3000},
-                height: {type: 'number', default: 1}
-            },
-            
-            init: function() {
-                const el = this.el;
-                const data = this.data;
-                
-                // Initial setup - start with zero height
-                el.setAttribute('scale', {x: 1, y: 0.01, z: 1});
-                
-                // Start growing after delay
-                setTimeout(() => {
-                    // Create animation for growing
-                    el.setAttribute('animation', {
-                        property: 'scale.y',
-                        to: data.height,
-                        dur: data.duration,
-                        easing: 'easeOutElastic'
-                    });
-                    
-                    // Add some slight movement animation
-                    el.setAttribute('animation__sway', {
-                        property: 'rotation.z',
-                        from: -2,
-                        to: 2,
-                        dir: 'alternate',
-                        dur: 2000 + Math.random() * 1000,
-                        loop: true,
-                        easing: 'easeInOutSine'
-                    });
-                }, data.delay);
-            }
-        });
-        
-        // Create random plant layout
-        AFRAME.registerComponent('plant-system', {
-            schema: {
-                count: {type: 'number', default: 10}
-            },
-            
-            init: function() {
-                const el = this.el;
-                const data = this.data;
-                
-                // Create plants after the scene loads
-                this.el.sceneEl.addEventListener('loaded', () => {
-                    // Create plants
-                    for (let i = 0; i < data.count; i++) {
-                        this.createPlant(el);
-                    }
-                });
-            },
-            
-            createPlant: function(parentEl) {
-                // Random position on the text
-                const xPos = (Math.random() - 0.5) * 2;
-                const zPos = (Math.random() - 0.5) * 0.5;
-                const delay = Math.random() * 2000 + 1000;
-                const height = Math.random() * 0.5 + 0.3;
-                
-                // Create stem
-                const stem = document.createElement('a-entity');
-                stem.setAttribute('position', {x: xPos, y: 0, z: zPos});
-                stem.setAttribute('geometry', {
-                    primitive: 'cylinder',
-                    radius: 0.02,
-                    height: 1
-                });
-                stem.setAttribute('material', {
-                    color: '#3a7d44',
-                    roughness: 0.8
-                });
-                stem.setAttribute('grow-plant', {
-                    delay: delay,
-                    height: height
-                });
-                parentEl.appendChild(stem);
-                
-                // Create leaf or flower at the top
-                const leafType = Math.random() > 0.5 ? 'leaf' : 'flower';
-                if (leafType === 'leaf') {
-                    const leaf = document.createElement('a-entity');
-                    leaf.setAttribute('position', {x: 0, y: 0.5, z: 0});
-                    leaf.setAttribute('geometry', {
-                        primitive: 'cone',
-                        radiusBottom: 0.1,
-                        radiusTop: 0.0,
-                        height: 0.2
-                    });
-                    leaf.setAttribute('material', {
-                        color: '#61b136',
-                        roughness: 0.7
-                    });
-                    leaf.setAttribute('rotation', {x: 90, y: 0, z: 0});
-                    leaf.setAttribute('animation', {
-                        property: 'scale',
-                        from: '0 0 0',
-                        to: '1 1 1',
-                        delay: delay + 500,
-                        dur: 1000,
-                        easing: 'easeOutElastic'
-                    });
-                    stem.appendChild(leaf);
-                } else {
-                    const flower = document.createElement('a-entity');
-                    flower.setAttribute('position', {x: 0, y: 0.5, z: 0});
-                    flower.setAttribute('geometry', {
-                        primitive: 'sphere',
-                        radius: 0.07
-                    });
-                    
-                    // Random flower color
-                    const colors = ['#e04db0', '#e0db4d', '#4de0cb', '#e04d4d', '#4d72e0'];
-                    const flowerColor = colors[Math.floor(Math.random() * colors.length)];
-                    
-                    flower.setAttribute('material', {
-                        color: flowerColor,
-                        roughness: 0.5,
-                        metalness: 0.2
-                    });
-                    flower.setAttribute('animation', {
-                        property: 'scale',
-                        from: '0 0 0',
-                        to: '1 1 1',
-                        delay: delay + 500,
-                        dur: 1000,
-                        easing: 'easeOutElastic'
-                    });
-                    stem.appendChild(flower);
-                }
-            }
-        });
-        
-        // Component to fetch and display messages
-        AFRAME.registerComponent('message-board', {
-            init: function() {
-                this.messagesContainer = this.el;
-                this.messageEntities = [];
-                this.spacing = 0.3; // Vertical spacing between messages
-                
-                // Listen for new messages
-                this.fetchMessages();
-            },
-            
-            fetchMessages: function() {
-                // Clear existing messages first
-                this.messageEntities.forEach(entity => {
-                    if (entity && entity.parentNode) {
-                        entity.parentNode.removeChild(entity);
-                    }
-                });
-                this.messageEntities = [];
-                
-                // Get messages from Firestore
-                messagesCollection.orderBy('timestamp', 'desc').limit(10).get()
-                    .then((querySnapshot) => {
-                        let verticalPosition = 0;
-                        
-                        querySnapshot.forEach((doc, index) => {
-                            const data = doc.data();
-                            this.createMessageEntity(data.name, data.message, verticalPosition);
-                            verticalPosition -= this.spacing;
-                        });
-                    })
-                    .catch((error) => {
-                        console.error("Error getting messages: ", error);
-                    });
-                
-                // Set up real-time listener for new messages
-                messagesCollection.orderBy('timestamp', 'desc').limit(1)
-                    .onSnapshot((snapshot) => {
-                        snapshot.docChanges().forEach((change) => {
-                            if (change.type === "added") {
-                                // Shift all existing messages down
-                                this.messageEntities.forEach(entity => {
-                                    const currentPosition = entity.getAttribute('position');
-                                    entity.setAttribute('position', {
-                                        x: currentPosition.x,
-                                        y: currentPosition.y - this.spacing,
-                                        z: currentPosition.z
-                                    });
-                                });
-                                
-                                // Add new message at the top
-                                const data = change.doc.data();
-                                this.createMessageEntity(data.name, data.message, 0);
-                            }
-                        });
-                    });
-            },
-            
-            createMessageEntity: function(name, text, yPosition) {
-                const messageEntity = document.createElement('a-entity');
-                messageEntity.setAttribute('position', {x: 0, y: yPosition, z: 0});
-                
-                // Message background
-                const background = document.createElement('a-plane');
-                background.setAttribute('width', 3);
-                background.setAttribute('height', 0.25);
-                background.setAttribute('color', '#ffffff');
-                background.setAttribute('opacity', 0.7);
-                background.setAttribute('position', {x: 0, y: 0, z: -0.01});
-                messageEntity.appendChild(background);
-                
-                // Name text
-                const nameText = document.createElement('a-text');
-                nameText.setAttribute('value', name + ":");
-                nameText.setAttribute('color', '#236969');
-                nameText.setAttribute('width', 3);
-                nameText.setAttribute('position', {x: -1.4, y: 0.05, z: 0});
-                nameText.setAttribute('align', 'left');
-                nameText.setAttribute('scale', {x: 0.5, y: 0.5, z: 0.5});
-                messageEntity.appendChild(nameText);
-                
-                // Message text
-                const messageText = document.createElement('a-text');
-                messageText.setAttribute('value', text);
-                messageText.setAttribute('color', '#000000');
-                messageText.setAttribute('width', 5);
-                messageText.setAttribute('position', {x: -1.4, y: -0.05, z: 0});
-                messageText.setAttribute('align', 'left');
-                messageText.setAttribute('scale', {x: 0.4, y: 0.4, z: 0.4});
-                messageEntity.appendChild(messageText);
-                
-                // Add animation for appearing
-                messageEntity.setAttribute('animation', {
-                    property: 'scale',
-                    from: '0 0 0',
-                    to: '1 1 1',
-                    dur: 1000,
-                    easing: 'easeOutElastic'
-                });
-                
-                this.messagesContainer.appendChild(messageEntity);
-                this.messageEntities.unshift(messageEntity);
-                
-                // Limit displayed messages to 10
-                if (this.messageEntities.length > 10) {
-                    const oldestMessage = this.messageEntities.pop();
-                    if (oldestMessage && oldestMessage.parentNode) {
-                        oldestMessage.parentNode.removeChild(oldestMessage);
-                    }
-                }
-            }
-        });
-        
-        // Camera access and main app functionality
-        document.addEventListener('DOMContentLoaded', function() {
-            const toggleFormButton = document.getElementById('toggleForm');
-            const messageForm = document.getElementById('messageForm');
-            const nameInput = document.getElementById('nameInput');
-            const messageInput = document.getElementById('messageInput');
-            const submitButton = document.getElementById('submitMessage');
-            const arjsLoader = document.querySelector('.arjs-loader');
-            
-            // Request camera permission automatically when page loads
-            requestCameraPermission();
-            
-            function requestCameraPermission() {
-                // Show loading screen while requesting
-                arjsLoader.style.display = 'flex';
-                
-                navigator.mediaDevices.getUserMedia({ video: true, audio: false })
-                    .then(function(stream) {
-                        // Camera access granted
-                        console.log('Camera access granted');
-                        // Hide loading screen after a short delay to allow AR.js to initialize
-                        setTimeout(() => {
-                            arjsLoader.style.display = 'none';
-                        }, 3000);
-                        
-                        // Stop the stream as AR.js will handle it
-                        const tracks = stream.getTracks();
-                        tracks.forEach(track => track.stop());
-                    })
-                    .catch(function(error) {
-                        console.error('Camera access error:', error);
-                        // Show error message
-                        const errorDiv = document.getElementById('camera-permission-error');
-                        errorDiv.style.display = 'block';
-                        arjsLoader.style.display = 'none';
-                    });
-            }
-            
-            // Add camera retry button if available
-            const cameraRetryButton = document.getElementById('camera-retry-button');
-            if (cameraRetryButton) {
-                cameraRetryButton.addEventListener('click', function() {
-                    const errorDiv = document.getElementById('camera-permission-error');
-                    errorDiv.style.display = 'none';
-                    requestCameraPermission();
-                });
-            }
-            
-            // Toggle message form
-            toggleFormButton.addEventListener('click', function() {
-                messageForm.style.display = messageForm.style.display === 'none' ? 'flex' : 'none';
-            });
-            
-            // Submit message
-            submitButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                const name = nameInput.value.trim();
-                const message = messageInput.value.trim();
-                
-                if (name && message) {
-                    // Add message to Firestore
-                    messagesCollection.add({
-                        name: name,
-                        message: message,
-                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                    })
-                    .then(() => {
-                        // Clear form
-                        messageInput.value = '';
-                        // Hide form after submission
-                        messageForm.style.display = 'none';
-                    })
-                    .catch((error) => {
-                        console.error("Error adding message: ", error);
-                        alert("Error posting message: " + error.message);
-                    });
-                } else {
-                    alert("Please enter your name and message!");
-                }
-            });
-        });
-    </script>
 </head>
 <body style="margin: 0; overflow: hidden;">
+    <!-- Debug information -->
+    <div id="debug-info"></div>
+    
     <!-- Camera permission error message -->
     <div id="camera-permission-error">
         <p>Camera access denied. Please enable camera access in your browser settings to use this AR experience.</p>
@@ -480,7 +204,7 @@
     </div>
     
     <!-- Message Form -->
-    <form id="messageForm" style="display: none;">
+    <form id="messageForm">
         <h3>Share Your Thoughts</h3>
         <input type="text" id="nameInput" placeholder="Your Name" required>
         <input type="text" id="messageInput" placeholder="Your Message" required>
@@ -493,43 +217,216 @@
     <a-scene 
         vr-mode-ui="enabled: false"
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960; cameraParametersUrl: https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/camera_para.dat;"
-        renderer="logarithmicDepthBuffer: true;"
+        arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;'
+        renderer="logarithmicDepthBuffer: true; precision: mediump;"
         loading-screen="enabled: false"
-        device-orientation-permission-ui="enabled: true">
+        debug>
         
-        <!-- Main 3D text with plants -->
+        <!-- Main text -->
         <a-entity 
             id="textArtifact"
-            gps-entity-place="latitude: 35.996414; longitude: -78.909946" 
-            look-at="[gps-camera]"
-            position="0 1.5 0">
-            
-            <!-- The Question -->
-            <a-entity
-                text-geometry="value: WHAT BRINGS YOU JOY?; font: #optimerBoldFont; size: 0.3; height: 0.05; bevelEnabled: true; bevelSize: 0.01; bevelThickness: 0.01"
-                material="color: #236969; metalness: 0.3; roughness: 0.6"
-                position="-2 0 0">
-            </a-entity>
-            
-            <!-- Plant system that generates plants on the text -->
-            <a-entity plant-system="count: 10"></a-entity>
-            
-            <!-- Message board - positioned below the main text -->
-            <a-entity 
-                id="messageBoard"
-                position="0 -0.7 0"
-                message-board>
-            </a-entity>
+            position="0 0 -2"
+            rotation="0 0 0"
+            simple-text="value: WHAT BRINGS YOU JOY?; color: #ffffff; align: center; width: 2; height: 0.7">
         </a-entity>
         
-        <!-- Camera -->
-        <a-camera gps-camera rotation-reader></a-camera>
+        <!-- Message board positioned below the text -->
+        <a-entity id="messageBoard" position="0 -1 -2"></a-entity>
         
-        <!-- Optimized font for text-geometry -->
-        <a-assets>
-            <a-asset-item id="optimerBoldFont" src="https://cdn.aframe.io/fonts/Exo2Bold.typeface.json"></a-asset-item>
-        </a-assets>
+        <!-- Camera with mouse/touch cursor -->
+        <a-entity camera look-controls>
+            <a-entity cursor="fuse: false"
+                      position="0 0 -1"
+                      geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
+                      material="color: white; shader: flat">
+            </a-entity>
+        </a-entity>
     </a-scene>
+    
+    <script>
+        console.log("Initializing script...");
+        
+        // Firebase configuration
+        // IMPORTANT: Replace with your own Firebase config!
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        let fbInitialized = false;
+        try {
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            const messagesCollection = db.collection('messages');
+            fbInitialized = true;
+            console.log("Firebase initialized successfully");
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+            showDebugInfo("Firebase error: " + error.message);
+        }
+        
+        // Add message component
+        let messageY = 0;
+        
+        function addMessage(name, text) {
+            const messageBoard = document.getElementById('messageBoard');
+            
+            // Create message group
+            const messageEntity = document.createElement('a-entity');
+            messageEntity.setAttribute('position', {x: 0, y: messageY, z: 0});
+            
+            // Create message background
+            const background = document.createElement('a-plane');
+            background.setAttribute('width', 2);
+            background.setAttribute('height', 0.25);
+            background.setAttribute('color', '#ffffff');
+            background.setAttribute('opacity', 0.7);
+            messageEntity.appendChild(background);
+            
+            // Add name text
+            const nameText = document.createElement('a-text');
+            nameText.setAttribute('value', name + ": ");
+            nameText.setAttribute('color', '#236969');
+            nameText.setAttribute('width', 1.8);
+            nameText.setAttribute('position', {x: -0.9, y: 0.05, z: 0.01});
+            nameText.setAttribute('align', 'left');
+            nameText.setAttribute('scale', {x: 0.3, y: 0.3, z: 0.3});
+            messageEntity.appendChild(nameText);
+            
+            // Add message text
+            const messageText = document.createElement('a-text');
+            messageText.setAttribute('value', text);
+            messageText.setAttribute('color', '#000000');
+            messageText.setAttribute('width', 1.8);
+            messageText.setAttribute('position', {x: -0.9, y: -0.05, z: 0.01});
+            messageText.setAttribute('align', 'left');
+            messageText.setAttribute('scale', {x: 0.3, y: 0.3, z: 0.3});
+            messageEntity.appendChild(messageText);
+            
+            messageBoard.appendChild(messageEntity);
+            
+            // Update position for next message
+            messageY -= 0.3;
+        }
+        
+        // Debug helper
+        function showDebugInfo(text) {
+            const debugDiv = document.getElementById('debug-info');
+            debugDiv.style.display = 'block';
+            debugDiv.innerHTML += text + '<br>';
+        }
+        
+        // DOM loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("DOM Content Loaded");
+            showDebugInfo("DOM loaded");
+            
+            const toggleFormButton = document.getElementById('toggleForm');
+            const messageForm = document.getElementById('messageForm');
+            const nameInput = document.getElementById('nameInput');
+            const messageInput = document.getElementById('messageInput');
+            const submitButton = document.getElementById('submitMessage');
+            const arjsLoader = document.querySelector('.arjs-loader');
+            
+            // Request camera permission
+            requestCameraPermission();
+            
+            function requestCameraPermission() {
+                console.log("Requesting camera permission...");
+                showDebugInfo("Requesting camera...");
+                
+                navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                    .then(function(stream) {
+                        console.log("Camera access granted");
+                        showDebugInfo("Camera OK");
+                        
+                        // Hide loader after delay
+                        setTimeout(() => {
+                            arjsLoader.style.display = 'none';
+                        }, 3000);
+                        
+                        // Stop our test stream as AR.js will handle the camera
+                        const tracks = stream.getTracks();
+                        tracks.forEach(track => track.stop());
+                    })
+                    .catch(function(error) {
+                        console.error("Camera access error:", error);
+                        showDebugInfo("Camera error: " + error.message);
+                        
+                        // Show error message
+                        const errorDiv = document.getElementById('camera-permission-error');
+                        errorDiv.style.display = 'block';
+                        arjsLoader.style.display = 'none';
+                    });
+            }
+            
+            // Camera retry button
+            const cameraRetryButton = document.getElementById('camera-retry-button');
+            if (cameraRetryButton) {
+                cameraRetryButton.addEventListener('click', function() {
+                    const errorDiv = document.getElementById('camera-permission-error');
+                    errorDiv.style.display = 'none';
+                    requestCameraPermission();
+                });
+            }
+            
+            // Toggle form button
+            toggleFormButton.addEventListener('click', function() {
+                messageForm.style.display = messageForm.style.display === 'none' ? 'block' : 'none';
+            });
+            
+            // Submit message
+            submitButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const name = nameInput.value.trim();
+                const message = messageInput.value.trim();
+                
+                if (name && message) {
+                    // Add message to display immediately
+                    addMessage(name, message);
+                    
+                    // Add to Firebase if initialized
+                    if (fbInitialized) {
+                        messagesCollection.add({
+                            name: name,
+                            message: message,
+                            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                        })
+                        .then(() => {
+                            console.log("Message saved to Firebase");
+                        })
+                        .catch((error) => {
+                            console.error("Error adding message:", error);
+                            showDebugInfo("Save error: " + error.message);
+                        });
+                    }
+                    
+                    // Clear form and hide
+                    messageInput.value = '';
+                    messageForm.style.display = 'none';
+                } else {
+                    alert("Please enter your name and message!");
+                }
+            });
+            
+            // Add some test messages after delay
+            setTimeout(() => {
+                addMessage("Test User", "This is a test message!");
+                addMessage("Another User", "Enjoying this AR installation!");
+            }, 5000);
+        });
+        
+        // Scene loaded event
+        document.querySelector('a-scene').addEventListener('loaded', function () {
+            console.log("A-Frame scene loaded");
+            showDebugInfo("Scene loaded");
+        });
+    </script>
 </body>
 </html>
