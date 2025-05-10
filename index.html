@@ -3,9 +3,14 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Flourish AR Installation</title>
+    <title>Community Garden AR Installation</title>
+    
+    <!-- A-Frame and AR.js -->
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    
+    <!-- GLTF loader for 3D models -->
+    <script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
     
     <style>
         .arjs-loader {
@@ -48,7 +53,7 @@
         #messageForm h3 {
             margin-top: 0;
             text-align: center;
-            color: #472183;
+            color: #4a7c59;
         }
         
         #messageForm input, #messageForm button {
@@ -61,7 +66,7 @@
         }
         
         #messageForm button {
-            background: #472183;
+            background: #4a7c59;
             color: white;
             border: none;
             cursor: pointer;
@@ -71,7 +76,7 @@
             position: fixed;
             bottom: 10px;
             right: 10px;
-            background: #472183;
+            background: #4a7c59;
             color: white;
             border: none;
             padding: 10px;
@@ -82,175 +87,165 @@
             font-size: 20px;
             cursor: pointer;
         }
+        
+        #debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            font-family: monospace;
+            padding: 5px;
+            font-size: 12px;
+            z-index: 1000;
+            display: none;
+        }
     </style>
     
     <script>
-        // Register flower component
-        AFRAME.registerComponent('flower', {
+        // Register custom cursive text component using SVG
+        AFRAME.registerComponent('cursive-text', {
             schema: {
-                color: {type: 'color', default: '#ff8a8a'},
-                size: {type: 'number', default: 0.3},
-                position: {type: 'vec3'},
-                rotation: {type: 'vec3'}
+                text: {type: 'string', default: 'Cursive Text'},
+                color: {type: 'color', default: '#ffffff'},
+                width: {type: 'number', default: 4},
+                height: {type: 'number', default: 2}
             },
             
             init: function() {
-                const data = this.data;
-                const el = this.el;
-                
-                // Create flower center
-                const center = document.createElement('a-sphere');
-                center.setAttribute('color', '#f3e661');
-                center.setAttribute('radius', data.size * 0.15);
-                center.setAttribute('position', '0 0 0');
-                el.appendChild(center);
-                
-                // Create petals
-                const petalCount = 8;
-                for (let i = 0; i < petalCount; i++) {
-                    const angle = (i / petalCount) * Math.PI * 2;
-                    const x = Math.cos(angle) * data.size * 0.4;
-                    const y = Math.sin(angle) * data.size * 0.4;
-                    
-                    const petal = document.createElement('a-ellipsoid');
-                    petal.setAttribute('scale', {
-                        x: data.size * 0.3,
-                        y: data.size * 0.4,
-                        z: data.size * 0.1
-                    });
-                    petal.setAttribute('position', {x, y, z: 0});
-                    petal.setAttribute('rotation', {
-                        x: 0, 
-                        y: 0, 
-                        z: (angle * 180 / Math.PI)
-                    });
-                    petal.setAttribute('color', data.color);
-                    petal.setAttribute('material', 'roughness: 0.8; metalness: 0.2');
-                    
-                    el.appendChild(petal);
-                }
-                
-                // Position and rotate the entire flower
-                if (data.position) {
-                    el.setAttribute('position', data.position);
-                }
-                if (data.rotation) {
-                    el.setAttribute('rotation', data.rotation);
-                }
-                
-                // Add subtle animation
-                el.setAttribute('animation', {
-                    property: 'rotation',
-                    dur: 8000 + Math.random() * 4000,
-                    easing: 'easeInOutSine',
-                    loop: true,
-                    to: `${Math.random() * 10 - 5} ${Math.random() * 10 - 5} ${Math.random() * 10 - 5}`
-                });
-            }
-        });
-        
-        // Register leaf component
-        AFRAME.registerComponent('leaf', {
-            schema: {
-                color: {type: 'color', default: '#8b65e4'},
-                size: {type: 'number', default: 0.3},
-                position: {type: 'vec3'},
-                rotation: {type: 'vec3'}
+                this.createCursiveText();
             },
             
-            init: function() {
-                const data = this.data;
-                const el = this.el;
+            update: function() {
+                this.createCursiveText();
+            },
+            
+            createCursiveText: function() {
+                // Clear previous content
+                while (this.el.firstChild) {
+                    this.el.removeChild(this.el.firstChild);
+                }
                 
-                // Create leaf shape
-                const leaf = document.createElement('a-entity');
-                leaf.setAttribute('geometry', {
-                    primitive: 'plane',
-                    width: data.size,
-                    height: data.size * 2
-                });
+                // Create SVG text image with cursive font
+                const text = this.data.text;
+                const width = this.data.width;
+                const height = this.data.height;
                 
-                // Apply material with leaf texture via SVG path
+                // Create SVG for the text
                 const svgData = `
-                    <svg viewBox="0 0 100 200" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M50,0 C100,50 100,150 50,200 C0,150 0,50 50,0 Z" fill="${data.color}" />
-                        <path d="M50,10 L50,190" stroke="#000" stroke-width="1" stroke-opacity="0.2" />
-                    </svg>`;
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width * 100} ${height * 100}">
+                    <style>
+                        @import url('https://fonts.googleapis.com/css2?family=Gwendolyn:wght@700&display=swap');
+                        .text {
+                            font-family: 'Gwendolyn', cursive;
+                            font-size: 60px;
+                            font-weight: 700;
+                            fill: ${this.data.color};
+                            text-anchor: middle;
+                            dominant-baseline: middle;
+                        }
+                    </style>
+                    <text x="${width * 50}" y="${height * 40}" class="text">${text}</text>
+                </svg>`;
                 
+                // Create blob URL from SVG
                 const svgBlob = new Blob([svgData], {type: 'image/svg+xml'});
                 const svgUrl = URL.createObjectURL(svgBlob);
                 
-                leaf.setAttribute('material', {
-                    src: svgUrl,
-                    transparent: true,
-                    alphaTest: 0.5,
-                    roughness: 0.7,
-                    metalness: 0.2
-                });
-                
-                el.appendChild(leaf);
-                
-                // Position and rotate
-                if (data.position) {
-                    el.setAttribute('position', data.position);
-                }
-                if (data.rotation) {
-                    el.setAttribute('rotation', data.rotation);
-                }
-                
-                // Add subtle animation
-                el.setAttribute('animation', {
-                    property: 'rotation',
-                    dur: 10000 + Math.random() * 5000,
-                    easing: 'easeInOutSine',
-                    loop: true,
-                    to: `${data.rotation.x + Math.random() * 10 - 5} ${data.rotation.y + Math.random() * 10 - 5} ${data.rotation.z + Math.random() * 10 - 5}`
-                });
-            }
-        });
-        
-        // Flourish text component - creates stylized 3D text
-        AFRAME.registerComponent('flourish-text', {
-            init: function() {
-                const el = this.el;
-                
-                // Create 3D text parts for stylized look
-                const createTextPart = (yOffset, zOffset, color, opacity) => {
-                    const text = document.createElement('a-text');
-                    text.setAttribute('value', 'Flourish');
-                    text.setAttribute('color', color);
-                    text.setAttribute('opacity', opacity);
-                    text.setAttribute('position', `0 ${yOffset} ${zOffset}`);
-                    text.setAttribute('align', 'center');
-                    text.setAttribute('width', 8);
-                    text.setAttribute('font', 'https://cdn.aframe.io/fonts/Aileron-Semibold.fnt');
-                    return text;
+                // Multiple planes for 3D effect
+                const createLayer = (zPos, opacity, color) => {
+                    const layer = document.createElement('a-plane');
+                    layer.setAttribute('width', width);
+                    layer.setAttribute('height', height);
+                    layer.setAttribute('position', `0 0 ${zPos}`);
+                    layer.setAttribute('material', {
+                        src: svgUrl,
+                        transparent: true,
+                        opacity: opacity,
+                        color: color
+                    });
+                    return layer;
                 };
                 
-                // Main text (white)
-                const mainText = createTextPart(0, 0, '#ffffff', 1.0);
-                mainText.setAttribute('scale', '1.2 1.2 1.2');
-                el.appendChild(mainText);
+                // Create main text plane
+                const mainLayer = createLayer(0, 1.0, '#ffffff');
+                this.el.appendChild(mainLayer);
                 
-                // Shadow/outline (adds depth)
-                const shadow1 = createTextPart(0, -0.01, '#ff8fab', 0.7);
-                shadow1.setAttribute('scale', '1.22 1.22 1.22');
-                el.appendChild(shadow1);
+                // Create shadow layers for 3D effect
+                this.el.appendChild(createLayer(-0.01, 0.7, '#a5d6a7'));
+                this.el.appendChild(createLayer(-0.02, 0.5, '#4a7c59'));
                 
-                const shadow2 = createTextPart(0, -0.02, '#472183', 0.5);
-                shadow2.setAttribute('scale', '1.24 1.24 1.24');
-                el.appendChild(shadow2);
-                
-                // Add subtle floating animation
-                el.setAttribute('animation', {
+                // Add a subtle floating animation
+                this.el.setAttribute('animation', {
                     property: 'position',
-                    dur: 6000,
+                    dur: 8000,
                     dir: 'alternate',
                     easing: 'easeInOutSine',
                     loop: true,
                     from: '0 0 0',
-                    to: '0 0.05 0'
+                    to: '0 0.08 0'
                 });
+            }
+        });
+        
+        // Flower model placer component
+        AFRAME.registerComponent('flower-garden', {
+            schema: {
+                flowerCount: {type: 'number', default: 15},
+                radius: {type: 'number', default: 3}
+            },
+            
+            init: function() {
+                this.placeFlowers();
+            },
+            
+            placeFlowers: function() {
+                // Flower model URLs - using free 3D models
+                const flowerModels = [
+                    'https://cdn.glitch.global/86ab404f-859d-409b-9df6-cbfdf954e5a7/sunflower.glb',
+                    'https://cdn.glitch.global/86ab404f-859d-409b-9df6-cbfdf954e5a7/tulip.glb',
+                    'https://cdn.glitch.global/86ab404f-859d-409b-9df6-cbfdf954e5a7/daisy.glb'
+                ];
+                
+                // Place flowers in a circular pattern on the ground
+                for (let i = 0; i < this.data.flowerCount; i++) {
+                    // Calculate position in a circle with some randomness
+                    const angle = (i / this.data.flowerCount) * Math.PI * 2;
+                    const randomRadius = this.data.radius * (0.5 + Math.random() * 0.5);
+                    const x = Math.cos(angle) * randomRadius;
+                    const z = Math.sin(angle) * randomRadius;
+                    
+                    // Randomize model selection
+                    const modelIndex = Math.floor(Math.random() * flowerModels.length);
+                    const modelUrl = flowerModels[modelIndex];
+                    
+                    // Create flower entity
+                    const flower = document.createElement('a-entity');
+                    flower.setAttribute('gltf-model', modelUrl);
+                    flower.setAttribute('position', {x: x, y: -1.5, z: z});
+                    flower.setAttribute('scale', {
+                        x: 0.5 + Math.random() * 0.5,
+                        y: 0.5 + Math.random() * 0.5,
+                        z: 0.5 + Math.random() * 0.5
+                    });
+                    flower.setAttribute('rotation', {
+                        x: 0, 
+                        y: Math.random() * 360, 
+                        z: 0
+                    });
+                    
+                    // Add subtle animation
+                    flower.setAttribute('animation', {
+                        property: 'rotation',
+                        dir: 'alternate',
+                        dur: 8000 + Math.random() * 4000,
+                        easing: 'easeInOutSine',
+                        loop: true,
+                        to: `0 ${360 + Math.random() * 30} 0`
+                    });
+                    
+                    this.el.appendChild(flower);
+                }
             }
         });
         
@@ -265,12 +260,11 @@
             const messageEntity = document.createElement('a-entity');
             messageEntity.setAttribute('class', 'message');
             
-            // Create message background with curved shape
+            // Create message background
             const background = document.createElement('a-box');
             background.setAttribute('width', 2);
             background.setAttribute('height', 0.25);
             background.setAttribute('depth', 0.02);
-            background.setAttribute('radius', 0.1);
             background.setAttribute('color', '#ffffff');
             background.setAttribute('opacity', 0.8);
             background.setAttribute('position', {x: 0, y: 0, z: -0.01});
@@ -280,7 +274,7 @@
             // Add name text
             const nameText = document.createElement('a-text');
             nameText.setAttribute('value', name + ":");
-            nameText.setAttribute('color', '#472183');
+            nameText.setAttribute('color', '#4a7c59');
             nameText.setAttribute('width', 1.8);
             nameText.setAttribute('position', {x: -0.9, y: 0.05, z: 0.01});
             nameText.setAttribute('align', 'left');
@@ -313,7 +307,7 @@
             repositionMessages();
         }
         
-        // Reposition all messages to avoid overlap
+        // Reposition all messages to prevent overlap
         function repositionMessages() {
             if (messages.length > MAX_MESSAGES) {
                 const oldestMessage = messages.shift();
@@ -326,6 +320,13 @@
                 const yPos = -0.3 * index;
                 msg.setAttribute('position', {x: 0, y: yPos, z: 0});
             });
+        }
+        
+        // Debug helper
+        function showDebugInfo(text) {
+            const debugDiv = document.getElementById('debug-info');
+            debugDiv.style.display = 'block';
+            debugDiv.innerHTML += text + '<br>';
         }
         
         // DOM loaded handler
@@ -381,13 +382,22 @@
                     alert("Please enter your name and message!");
                 }
             });
+            
+            // Add sample messages after a delay
+            setTimeout(() => {
+                addMessage("Amanda", "I love this idea! We need more green spaces.");
+                addMessage("Carlos", "My grandmother would enjoy helping tend to this.");
+            }, 6000);
         });
     </script>
 </head>
 <body style="margin: 0; overflow: hidden;">
+    <!-- Debug information -->
+    <div id="debug-info"></div>
+    
     <div class="arjs-loader">
         <div>
-            <h1>Flourish AR Installation</h1>
+            <h1>Community Garden AR</h1>
             <p>Loading... Please allow camera access when prompted.</p>
         </div>
     </div>
@@ -410,62 +420,39 @@
         renderer="logarithmicDepthBuffer: true; precision: mediump; colorManagement: true;"
         loading-screen="enabled: false">
         
-        <!-- Purple background -->
+        <!-- Green semi-transparent background -->
         <a-plane 
             position="0 0 -6" 
             rotation="0 0 0" 
             width="12" 
             height="9" 
-            color="#2e1a47" 
-            opacity="0.95"
+            color="#e8f5e9" 
+            opacity="0.7"
             material="side: double">
         </a-plane>
         
-        <!-- Flourish Text -->
+        <!-- Cursive text entity -->
         <a-entity 
             position="0 0.5 -4" 
-            scale="1.5 1.5 1.5"
-            flourish-text>
+            scale="1 1 1"
+            cursive-text="text: Why can't this be\na community garden?; color: #ffffff; width: 5; height: 2">
         </a-entity>
         
-        <!-- Flowers and decorative elements -->
-        <a-entity position="0 0 -4">
-            <!-- Pink/Coral flowers -->
-            <a-entity flower="color: #ff8a8a; size: 0.7; position: -2.2 1.2 0; rotation: 0 0 20"></a-entity>
-            <a-entity flower="color: #ff8a8a; size: 0.6; position: 1.8 1.0 0.1; rotation: 0 0 -15"></a-entity>
-            <a-entity flower="color: #ff8a8a; size: 0.5; position: -1.2 -1.0 0.2; rotation: 0 0 30"></a-entity>
-            
-            <!-- Blue/Purple flowers -->
-            <a-entity flower="color: #a19bff; size: 0.65; position: 1.4 -0.8 0.1; rotation: 0 0 10"></a-entity>
-            <a-entity flower="color: #a19bff; size: 0.7; position: -0.4 1.4 0.2; rotation: 0 0 -25"></a-entity>
-            
-            <!-- Purple leaves -->
-            <a-entity leaf="color: #8b65e4; size: 0.6; position: -1.8 0.5 -0.1; rotation: 0 0 45"></a-entity>
-            <a-entity leaf="color: #8b65e4; size: 0.5; position: 2.1 0.3 -0.1; rotation: 0 0 -60"></a-entity>
-            <a-entity leaf="color: #8b65e4; size: 0.55; position: 1.0 1.2 -0.1; rotation: 0 0 30"></a-entity>
-            <a-entity leaf="color: #8b65e4; size: 0.4; position: -0.8 -0.8 -0.1; rotation: 0 0 -40"></a-entity>
-            <a-entity leaf="color: #8b65e4; size: 0.5; position: 0 -1.2 -0.1; rotation: 0 0 10"></a-entity>
-            
-            <!-- Yellow accent dots -->
-            <a-sphere color="#f3e661" radius="0.12" position="-1.8 0.8 0.3" opacity="0.9"></a-sphere>
-            <a-sphere color="#f3e661" radius="0.1" position="1.6 0.6 0.3" opacity="0.9"></a-sphere>
-            <a-sphere color="#f3e661" radius="0.11" position="0.5 -1.0 0.3" opacity="0.9"></a-sphere>
-            
-            <!-- Pink small circles -->
-            <a-ring color="#ff8fab" radius-inner="0.08" radius-outer="0.12" position="-1.2 0.6 0.2" opacity="0.8"></a-ring>
-            <a-ring color="#ff8fab" radius-inner="0.06" radius-outer="0.09" position="1.0 -0.5 0.2" opacity="0.8"></a-ring>
-            <a-ring color="#ff8fab" radius-inner="0.05" radius-outer="0.08" position="2.2 0.9 0.2" opacity="0.8"></a-ring>
+        <!-- 3D Flower Garden -->
+        <a-entity 
+            position="0 0 -4"
+            flower-garden="flowerCount: 20; radius: 3">
         </a-entity>
         
-        <!-- Message board positioned below the text -->
-        <a-entity id="messageBoard" position="0 -1.2 -4"></a-entity>
+        <!-- Message board positioned below everything -->
+        <a-entity id="messageBoard" position="0 -1.8 -4"></a-entity>
         
         <!-- Camera and cursor -->
         <a-entity camera look-controls position="0 0 0">
             <a-entity cursor="fuse: false"
                       position="0 0 -1"
                       geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
-                      material="color: white; shader: flat">
+                      material="color: #4a7c59; shader: flat">
             </a-entity>
         </a-entity>
     </a-scene>
