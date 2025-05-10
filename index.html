@@ -38,6 +38,29 @@
             font-family: Arial, Helvetica, sans-serif;
         }
         
+        #camera-permission-error {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            z-index: 1001;
+            display: none;
+        }
+        
+        #camera-retry-button {
+            background: white;
+            color: black;
+            border: none;
+            padding: 8px 16px;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
         #messageForm {
             position: fixed;
             bottom: 20px;
@@ -357,13 +380,53 @@
             }
         });
         
-        // Main app functionality
+        // Camera access and main app functionality
         document.addEventListener('DOMContentLoaded', function() {
             const toggleFormButton = document.getElementById('toggleForm');
             const messageForm = document.getElementById('messageForm');
             const nameInput = document.getElementById('nameInput');
             const messageInput = document.getElementById('messageInput');
             const submitButton = document.getElementById('submitMessage');
+            const arjsLoader = document.querySelector('.arjs-loader');
+            
+            // Request camera permission automatically when page loads
+            requestCameraPermission();
+            
+            function requestCameraPermission() {
+                // Show loading screen while requesting
+                arjsLoader.style.display = 'flex';
+                
+                navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+                    .then(function(stream) {
+                        // Camera access granted
+                        console.log('Camera access granted');
+                        // Hide loading screen after a short delay to allow AR.js to initialize
+                        setTimeout(() => {
+                            arjsLoader.style.display = 'none';
+                        }, 3000);
+                        
+                        // Stop the stream as AR.js will handle it
+                        const tracks = stream.getTracks();
+                        tracks.forEach(track => track.stop());
+                    })
+                    .catch(function(error) {
+                        console.error('Camera access error:', error);
+                        // Show error message
+                        const errorDiv = document.getElementById('camera-permission-error');
+                        errorDiv.style.display = 'block';
+                        arjsLoader.style.display = 'none';
+                    });
+            }
+            
+            // Add camera retry button if available
+            const cameraRetryButton = document.getElementById('camera-retry-button');
+            if (cameraRetryButton) {
+                cameraRetryButton.addEventListener('click', function() {
+                    const errorDiv = document.getElementById('camera-permission-error');
+                    errorDiv.style.display = 'none';
+                    requestCameraPermission();
+                });
+            }
             
             // Toggle message form
             toggleFormButton.addEventListener('click', function() {
@@ -402,10 +465,17 @@
     </script>
 </head>
 <body style="margin: 0; overflow: hidden;">
+    <!-- Camera permission error message -->
+    <div id="camera-permission-error">
+        <p>Camera access denied. Please enable camera access in your browser settings to use this AR experience.</p>
+        <button id="camera-retry-button">Try Again</button>
+    </div>
+    
     <div class="arjs-loader">
         <div>
             <h1>AR Art Installation</h1>
-            <p>Please allow camera and location access and point your device around you.</p>
+            <p>Please allow camera and location access when prompted.</p>
+            <p>If nothing happens, please check your browser permissions.</p>
         </div>
     </div>
     
@@ -423,8 +493,10 @@
     <a-scene 
         vr-mode-ui="enabled: false"
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
-        renderer="logarithmicDepthBuffer: true;">
+        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960; cameraParametersUrl: https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/data/camera_para.dat;"
+        renderer="logarithmicDepthBuffer: true;"
+        loading-screen="enabled: false"
+        device-orientation-permission-ui="enabled: true">
         
         <!-- Main 3D text with plants -->
         <a-entity 
