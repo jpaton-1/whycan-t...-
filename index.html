@@ -46,6 +46,83 @@
             font-size: 12px;
             z-index: 999;
         }
+        
+        /* Response form styling */
+        .response-form {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            padding: 15px;
+            color: white;
+            font-family: Arial, sans-serif;
+            z-index: 1000;
+            display: none; /* Hidden by default, shown when near location */
+        }
+        
+        .response-form input,
+        .response-form textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0 10px;
+            border: none;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.9);
+            font-family: Arial, sans-serif;
+        }
+        
+        .response-form textarea {
+            height: 80px;
+            resize: none;
+        }
+        
+        .response-form button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+        }
+        
+        .response-form button:hover {
+            background: #3e8e41;
+        }
+        
+        .response-form h3 {
+            margin-top: 0;
+            text-align: center;
+        }
+        
+        .response-status {
+            margin-top: 10px;
+            text-align: center;
+            font-weight: bold;
+            min-height: 20px;
+        }
+        
+        .response-toggle {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 1000;
+            display: none; /* Hidden by default, shown when near location */
+        }
     </style>
     
     <script>
@@ -298,10 +375,14 @@
                                 component.locationDisplay.innerHTML += '<div><strong>You are near the garden location!</strong></div>';
                                 // Ensure garden is visible
                                 document.getElementById('garden-container').setAttribute('visible', true);
+                                
+                                // Show the response form toggle button
+                                document.getElementById('response-toggle').style.display = 'block';
                             } else {
                                 component.locationDisplay.innerHTML += `<div>Move ${distance.toFixed(1)}m closer to see the garden</div>`;
-                                // Optionally hide garden if too far away
-                                // document.getElementById('garden-container').setAttribute('visible', false);
+                                // Hide the response form and toggle button when far away
+                                document.getElementById('response-form').style.display = 'none';
+                                document.getElementById('response-toggle').style.display = 'none';
                             }
                             
                             // Log camera position for debugging
@@ -346,6 +427,24 @@
             <p>This experience works best when you are near the target location.</p>
         </div>
     </div>
+    
+    <!-- Response form -->
+    <div id="response-form" class="response-form">
+        <h3>Share Your Thoughts</h3>
+        <form id="garden-response-form">
+            <label for="name">Your Name:</label>
+            <input type="text" id="name" name="name" required>
+            
+            <label for="message">Why do you think this should be a community garden?</label>
+            <textarea id="message" name="message" required></textarea>
+            
+            <button type="submit">Submit</button>
+        </form>
+        <div id="response-status" class="response-status"></div>
+    </div>
+    
+    <!-- Toggle button for the form -->
+    <button id="response-toggle" class="response-toggle">+</button>
     
     <a-scene 
         vr-mode-ui="enabled: false"
@@ -419,6 +518,75 @@
                     console.log('Scene loaded');
                 });
             }
+            
+            // Response form toggle
+            const responseToggle = document.getElementById('response-toggle');
+            const responseForm = document.getElementById('response-form');
+            
+            responseToggle.addEventListener('click', function() {
+                const isVisible = responseForm.style.display === 'block';
+                responseForm.style.display = isVisible ? 'none' : 'block';
+                responseToggle.textContent = isVisible ? '+' : 'x';
+            });
+            
+            // Form submission handling
+            const gardenForm = document.getElementById('garden-response-form');
+            const statusDiv = document.getElementById('response-status');
+            
+            gardenForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                // Get form data
+                const name = document.getElementById('name').value;
+                const message = document.getElementById('message').value;
+                const timestamp = new Date().toLocaleString();
+                
+                // Validate input
+                if (!name || !message) {
+                    statusDiv.textContent = 'Please fill out all fields.';
+                    statusDiv.style.color = '#ff6b6b';
+                    return;
+                }
+                
+                // Update status
+                statusDiv.textContent = 'Submitting...';
+                statusDiv.style.color = 'white';
+                
+                // URL of your deployed Google Apps Script web app
+                // You need to replace this with your actual deployed script URL
+                const scriptURL = 'https://script.google.com/macros/s/AKfycbxBT2wnnk8feI8gZiMBKtrAPIX0DY5E6Qry4ayF8KVEa4v5hQHJPFeUSPdObuospRF0/exec';
+                
+                // Prepare URL with parameters (the format expected by the Google Apps Script)
+                const url = new URL(scriptURL);
+                url.searchParams.append('name', name);
+                url.searchParams.append('message', message);
+                url.searchParams.append('timestamp', timestamp);
+                
+                // Make the fetch request
+                fetch(url, {
+                    method: 'POST',
+                    mode: 'no-cors' // Required for Google Apps Script
+                })
+                .then(() => {
+                    // Success handling 
+                    // Note: With no-cors mode, we can't access response content
+                    // So we just assume success if the request didn't throw an error
+                    statusDiv.textContent = 'Thank you for sharing your thoughts!';
+                    statusDiv.style.color = '#4CAF50';
+                    gardenForm.reset();
+                    
+                    // Hide form after successful submission
+                    setTimeout(() => {
+                        responseForm.style.display = 'none';
+                        responseToggle.textContent = '+';
+                    }, 3000);
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    statusDiv.textContent = 'Network error. Please try again.';
+                    statusDiv.style.color = '#ff6b6b';
+                });
+            });
         });
     </script>
 </body>
