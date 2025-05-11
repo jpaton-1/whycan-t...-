@@ -79,17 +79,36 @@
         AFRAME.registerComponent('flower-garden', {
             schema: {
                 flowerCount: {type: 'number', default: 15},
-                radius: {type: 'number', default: 3}
+                radius: {type: 'number', default: 3},
+                fixedToLocation: {type: 'boolean', default: true}
             },
             
             init: function() {
-                // Wait a moment to ensure everything is loaded
+                // Store a reference to the component
+                const component = this;
+                
+                // Listen for the GPS camera update event
+                window.addEventListener('gps-camera-update-position', function() {
+                    // Only place flowers once
+                    if (!component.flowersPlaced) {
+                        component.placeFlowers();
+                        component.flowersPlaced = true;
+                    }
+                });
+                
+                // Fallback in case GPS event doesn't fire
                 setTimeout(() => {
-                    this.placeFlowers();
-                }, 1000);
+                    if (!this.flowersPlaced) {
+                        this.placeFlowers();
+                        this.flowersPlaced = true;
+                    }
+                }, 3000);
             },
             
             placeFlowers: function() {
+                // Path to models - adjust to your server location
+                const basePath = './models/'; // Update this path to match your server structure
+                
                 // Local flower model files from repository
                 const flowerModels = [
                     '6 Orchid.glb',
@@ -116,11 +135,12 @@
                     
                     // Randomize model selection
                     const modelIndex = Math.floor(Math.random() * flowerModels.length);
-                    const modelUrl = flowerModels[modelIndex];
+                    const modelUrl = basePath + flowerModels[modelIndex];
                     
                     // Create flower entity
                     const flower = document.createElement('a-entity');
                     flower.setAttribute('gltf-model', modelUrl);
+                    flower.setAttribute('class', 'flower-model');
                     
                     // Start position below ground
                     flower.setAttribute('position', {x: x, y: -1.5, z: z});
@@ -154,7 +174,7 @@
                     flower.setAttribute('animation__sway', {
                         property: 'rotation',
                         from: `0 ${Math.random() * 360} 0`,
-                        to: `0 ${Math.random() * 360} 0`,
+                        to: `0 ${Math.random() * 360 + 15} 0`,
                         dur: 10000 + Math.random() * 5000,
                         delay: 4000 + Math.random() * 2000,
                         easing: 'easeInOutSine',
@@ -163,7 +183,20 @@
                     });
                     
                     this.el.appendChild(flower);
+                    
+                    // Log flower creation for debugging
+                    console.log(`Placed flower at (${x}, -0.5, ${z})`);
                 }
+                
+                // Add a debugging cube at origin point
+                const originCube = document.createElement('a-box');
+                originCube.setAttribute('position', '0 0 0');
+                originCube.setAttribute('color', 'red');
+                originCube.setAttribute('scale', '0.2 0.2 0.2');
+                originCube.setAttribute('opacity', '0.7');
+                this.el.appendChild(originCube);
+                
+                console.log(`Placed ${this.data.flowerCount} flowers around GPS location`);
             }
         });
         
@@ -172,7 +205,8 @@
             schema: {
                 targetLat: {type: 'number', default: 35.996417},
                 targetLon: {type: 'number', default: -78.909944},
-                threshold: {type: 'number', default: 100} // Distance threshold in meters
+                threshold: {type: 'number', default: 100}, // Distance threshold in meters
+                debugMode: {type: 'boolean', default: true} // Enable more detailed debugging
             },
             
             init: function() {
@@ -181,8 +215,58 @@
                 this.locationDisplay.className = 'location-info';
                 document.body.appendChild(this.locationDisplay);
                 
+                // Add controls for testing
+                if (this.data.debugMode) {
+                    this.addDebugControls();
+                }
+                
                 // Start checking location when user has allowed geolocation
                 this.startLocationCheck();
+            },
+            
+            addDebugControls: function() {
+                const debugControls = document.createElement('div');
+                debugControls.className = 'debug-controls';
+                debugControls.style.position = 'fixed';
+                debugControls.style.top = '10px';
+                debugControls.style.right = '10px';
+                debugControls.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+                debugControls.style.color = 'white';
+                debugControls.style.padding = '10px';
+                debugControls.style.zIndex = '999';
+                debugControls.innerHTML = `
+                    <div>Debug Controls</div>
+                    <button id="place-here">Place Garden Here</button>
+                    <button id="toggle-ground">Toggle Ground</button>
+                    <button id="toggle-debug">Toggle Debug</button>
+                `;
+                document.body.appendChild(debugControls);
+                
+                // Place garden at current location
+                document.getElementById('place-here').addEventListener('click', () => {
+                    navigator.geolocation.getCurrentPosition((position) => {
+                        const garden = document.getElementById('garden-container');
+                        garden.setAttribute('gps-projected-entity-place', {
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude
+                        });
+                        alert(`Garden placed at: ${position.coords.latitude}, ${position.coords.longitude}`);
+                    });
+                });
+                
+                // Toggle ground visibility
+                document.getElementById('toggle-ground').addEventListener('click', () => {
+                    const ground = document.getElementById('ground-reference');
+                    const currentOpacity = ground.getAttribute('material').opacity;
+                    ground.setAttribute('material', 'opacity', currentOpacity > 0 ? 0 : 0.3);
+                });
+                
+                // Toggle debug elements
+                document.getElementById('toggle-debug').addEventListener('click', () => {
+                    const scene = document.querySelector('a-scene');
+                    const debugUIEnabled = scene.getAttribute('arjs').debugUIEnabled;
+                    scene.setAttribute('arjs', 'debugUIEnabled', !debugUIEnabled);
+                });
             },
             
             startLocationCheck: function() {
@@ -212,9 +296,23 @@
                             // If we're close enough to the target location
                             if (distance < component.data.threshold) {
                                 component.locationDisplay.innerHTML += '<div><strong>You are near the garden location!</strong></div>';
+                                // Ensure garden is visible
+                                document.getElementById('garden-container').setAttribute('visible', true);
                             } else {
                                 component.locationDisplay.innerHTML += `<div>Move ${distance.toFixed(1)}m closer to see the garden</div>`;
+                                // Optionally hide garden if too far away
+                                // document.getElementById('garden-container').setAttribute('visible', false);
                             }
+                            
+                            // Log camera position for debugging
+                            if (component.data.debugMode) {
+                                const camera = document.querySelector('[gps-projected-camera]');
+                                if (camera) {
+                                    const cameraPos = camera.getAttribute('position');
+                                    console.log(`Camera position: ${JSON.stringify(cameraPos)}`);
+                                }
+                            }
+                            
                         }, (error) => {
                             component.locationDisplay.innerHTML = `Location error: ${error.message}`;
                         }, {
@@ -252,34 +350,46 @@
     <a-scene 
         vr-mode-ui="enabled: false"
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
+        arjs="sourceType: webcam; debugUIEnabled: true; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
         renderer="logarithmicDepthBuffer: true;"
         location-check="targetLat: 35.996417; targetLon: -78.909944; threshold: 100">
         
         <!-- GPS-anchored entities -->
-        <a-entity
-            gps-entity-place="latitude: 35.996417; longitude: -78.909944;">
+        <a-entity id="garden-container"
+            gps-projected-entity-place="latitude: 35.996417; longitude: -78.909944;">
+            
+            <!-- Add a reference ground plane to help with placement -->
+            <a-circle 
+                id="ground-reference"
+                material="color: #7c5c3c; opacity: 0.3; side: double"
+                rotation="-90 0 0"
+                radius="5"
+                position="0 -0.1 0">
+            </a-circle>
             
             <!-- Text floating above the garden -->
             <a-text 
+                id="garden-text"
                 value="Why can't this be a community garden?"
                 color="white" 
                 align="center"
                 width="4"
                 position="0 1.5 0"
                 scale="1 1 1"
+                look-at="[gps-camera]"
                 animation="property: position; to: 0 1.7 0; dur: 3000; easing: easeInOutSine; loop: true; dir: alternate;">
             </a-text>
             
             <!-- 3D Flower Garden -->
             <a-entity 
+                id="flower-container"
                 position="0 0 0"
                 flower-garden="flowerCount: 20; radius: 4">
             </a-entity>
         </a-entity>
         
         <!-- Camera with GPS tracking -->
-        <a-camera gps-camera="simulateLatitude: 35.996417; simulateLongitude: -78.909944;" rotation-reader></a-camera>
+        <a-camera gps-projected-camera="simulateLatitude: 35.996417; simulateLongitude: -78.909944;" rotation-reader></a-camera>
     </a-scene>
     
     <script>
