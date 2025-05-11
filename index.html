@@ -103,79 +103,53 @@
     </style>
     
     <script>
-        // Register custom cursive text component using SVG
-        AFRAME.registerComponent('cursive-text', {
+        // Register custom extruded text component
+        AFRAME.registerComponent('extruded-text', {
             schema: {
-                text: {type: 'string', default: 'Cursive Text'},
-                color: {type: 'color', default: '#ffffff'},
-                width: {type: 'number', default: 4},
-                height: {type: 'number', default: 2}
+                text: {type: 'string', default: 'Text'},
+                depth: {type: 'number', default: 0.15},
+                size: {type: 'number', default: 1}
             },
             
             init: function() {
-                this.createCursiveText();
+                this.createExtrudedText();
             },
             
             update: function() {
-                this.createCursiveText();
+                this.createExtrudedText();
             },
             
-            createCursiveText: function() {
+            createExtrudedText: function() {
                 // Clear previous content
                 while (this.el.firstChild) {
                     this.el.removeChild(this.el.firstChild);
                 }
                 
-                // Create SVG text image with cursive font
-                const text = this.data.text;
-                const width = this.data.width;
-                const height = this.data.height;
+                // Main text entity - using A-Frame's text geometry which supports extrusion
+                const textEntity = document.createElement('a-entity');
                 
-                // Create SVG for the text
-                const svgData = `
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width * 100} ${height * 100}">
-                    <style>
-                        @import url('https://fonts.googleapis.com/css2?family=Gwendolyn:wght@700&display=swap');
-                        .text {
-                            font-family: 'Gwendolyn', cursive;
-                            font-size: 60px;
-                            font-weight: 700;
-                            fill: ${this.data.color};
-                            text-anchor: middle;
-                            dominant-baseline: middle;
-                        }
-                    </style>
-                    <text x="${width * 50}" y="${height * 40}" class="text">${text}</text>
-                </svg>`;
+                // Create the text with extrusion
+                textEntity.setAttribute('text-geometry', {
+                    value: this.data.text,
+                    font: '#optimerFont',
+                    size: this.data.size,
+                    height: this.data.depth,
+                    bevelEnabled: true,
+                    bevelSize: 0.02,
+                    bevelThickness: 0.02,
+                    curveSegments: 12
+                });
                 
-                // Create blob URL from SVG
-                const svgBlob = new Blob([svgData], {type: 'image/svg+xml'});
-                const svgUrl = URL.createObjectURL(svgBlob);
+                // Apply white material with slight shine
+                textEntity.setAttribute('material', {
+                    color: '#ffffff',
+                    roughness: 0.2,
+                    metalness: 0.3
+                });
                 
-                // Multiple planes for 3D effect
-                const createLayer = (zPos, opacity, color) => {
-                    const layer = document.createElement('a-plane');
-                    layer.setAttribute('width', width);
-                    layer.setAttribute('height', height);
-                    layer.setAttribute('position', `0 0 ${zPos}`);
-                    layer.setAttribute('material', {
-                        src: svgUrl,
-                        transparent: true,
-                        opacity: opacity,
-                        color: color
-                    });
-                    return layer;
-                };
+                this.el.appendChild(textEntity);
                 
-                // Create main text plane
-                const mainLayer = createLayer(0, 1.0, '#ffffff');
-                this.el.appendChild(mainLayer);
-                
-                // Create shadow layers for 3D effect
-                this.el.appendChild(createLayer(-0.01, 0.7, '#a5d6a7'));
-                this.el.appendChild(createLayer(-0.02, 0.5, '#4a7c59'));
-                
-                // Add a subtle floating animation
+                // Add subtle floating animation
                 this.el.setAttribute('animation', {
                     property: 'position',
                     dur: 8000,
@@ -200,18 +174,27 @@
             },
             
             placeFlowers: function() {
-                // Flower model URLs - using free 3D models
+                // Local flower model files from repository
                 const flowerModels = [
-                    'https://cdn.glitch.global/86ab404f-859d-409b-9df6-cbfdf954e5a7/sunflower.glb',
-                    'https://cdn.glitch.global/86ab404f-859d-409b-9df6-cbfdf954e5a7/tulip.glb',
-                    'https://cdn.glitch.global/86ab404f-859d-409b-9df6-cbfdf954e5a7/daisy.glb'
+                    '6 Orchid.glb',
+                    '7 Poppy.glb',
+                    '8 Iris.glb',
+                    '13 Marigold.glb',
+                    '16 Lavender.glb',
+                    '17 Hibiscus.glb',
+                    '20 Violet.glb',
+                    '24 Cosmos.glb',
+                    '25 Snapdragon.glb',
+                    '26 Morning Glory.glb',
+                    '27 Anemone.glb',
+                    '30 Primrose.glb'
                 ];
                 
                 // Place flowers in a circular pattern on the ground
                 for (let i = 0; i < this.data.flowerCount; i++) {
                     // Calculate position in a circle with some randomness
                     const angle = (i / this.data.flowerCount) * Math.PI * 2;
-                    const randomRadius = this.data.radius * (0.5 + Math.random() * 0.5);
+                    const randomRadius = this.data.radius * (0.3 + Math.random() * 0.7);
                     const x = Math.cos(angle) * randomRadius;
                     const z = Math.sin(angle) * randomRadius;
                     
@@ -222,30 +205,51 @@
                     // Create flower entity
                     const flower = document.createElement('a-entity');
                     flower.setAttribute('gltf-model', modelUrl);
-                    flower.setAttribute('position', {x: x, y: -1.5, z: z});
+                    
+                    // Position flower on ground level with slight variation
+                    // Set y to -2.0 to place right on the ground
+                    flower.setAttribute('position', {x: x, y: -2.0, z: z});
+                    
+                    // Random scale, but keep it proportional
+                    const scale = 0.5 + Math.random() * 0.3;
                     flower.setAttribute('scale', {
-                        x: 0.5 + Math.random() * 0.5,
-                        y: 0.5 + Math.random() * 0.5,
-                        z: 0.5 + Math.random() * 0.5
+                        x: scale,
+                        y: scale,
+                        z: scale
                     });
+                    
                     flower.setAttribute('rotation', {
                         x: 0, 
                         y: Math.random() * 360, 
                         z: 0
                     });
                     
-                    // Add subtle animation
+                    // Add spring-up animation
                     flower.setAttribute('animation', {
+                        property: 'position',
+                        from: `${x} -2.2 ${z}`,
+                        to: `${x} -2.0 ${z}`,
+                        dur: 3000 + Math.random() * 2000,
+                        delay: Math.random() * 3000,
+                        easing: 'easeOutElastic',
+                        loop: false
+                    });
+                    
+                    // Add subtle swaying animation
+                    flower.setAttribute('animation__sway', {
                         property: 'rotation',
                         dir: 'alternate',
-                        dur: 8000 + Math.random() * 4000,
+                        dur: 10000 + Math.random() * 5000,
                         easing: 'easeInOutSine',
                         loop: true,
-                        to: `0 ${360 + Math.random() * 30} 0`
+                        from: `0 ${Math.random() * 360} 0`,
+                        to: `${Math.random() * 5 - 2.5} ${Math.random() * 360 + 10} ${Math.random() * 5 - 2.5}`
                     });
                     
                     this.el.appendChild(flower);
                 }
+            }
+        });
             }
         });
         
@@ -420,41 +424,26 @@
         renderer="logarithmicDepthBuffer: true; precision: mediump; colorManagement: true;"
         loading-screen="enabled: false">
         
-        <!-- Green semi-transparent background -->
-        <a-plane 
-            position="0 0 -6" 
-            rotation="0 0 0" 
-            width="12" 
-            height="9" 
-            color="#e8f5e9" 
-            opacity="0.7"
-            material="side: double">
-        </a-plane>
-        
-        <!-- Cursive text entity -->
+        <!-- Extruded white text -->
         <a-entity 
-            position="0 0.5 -4" 
-            scale="1 1 1"
-            cursive-text="text: Why can't this be\na community garden?; color: #ffffff; width: 5; height: 2">
+            position="0 0 -4" 
+            scale="0.8 0.8 0.8"
+            extruded-text="text: Why can't this be a community garden?; depth: 0.1; size: 0.3">
         </a-entity>
         
         <!-- 3D Flower Garden -->
         <a-entity 
             position="0 0 -4"
-            flower-garden="flowerCount: 20; radius: 3">
+            flower-garden="flowerCount: 30; radius: 3">
         </a-entity>
         
-        <!-- Message board positioned below everything -->
-        <a-entity id="messageBoard" position="0 -1.8 -4"></a-entity>
+        <!-- Camera -->
+        <a-entity camera look-controls position="0 0 0"></a-entity>
         
-        <!-- Camera and cursor -->
-        <a-entity camera look-controls position="0 0 0">
-            <a-entity cursor="fuse: false"
-                      position="0 0 -1"
-                      geometry="primitive: ring; radiusInner: 0.02; radiusOuter: 0.03"
-                      material="color: #4a7c59; shader: flat">
-            </a-entity>
-        </a-entity>
+        <!-- Font for text geometry -->
+        <a-assets>
+            <a-asset-item id="optimerFont" src="https://cdn.aframe.io/fonts/Exo2Bold.typeface.json"></a-asset-item>
+        </a-assets>
     </a-scene>
 </body>
 </html>
