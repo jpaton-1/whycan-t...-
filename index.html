@@ -479,6 +479,19 @@
                 animation="property: position; to: 0 1.7 0; dur: 3000; easing: easeInOutSine; loop: true; dir: alternate;">
             </a-text>
             
+            <!-- Response display text -->
+            <a-text
+                id="response-display"
+                value=""
+                color="#B3FFAE"
+                align="center"
+                width="3.5"
+                position="0 0.9 0"
+                scale="0.8 0.8 0.8"
+                look-at="[gps-camera]"
+                animation="property: position; to: 0 1.0 0; dur: 4000; easing: easeInOutSine; loop: true; dir: alternate; delay: 1500;">
+            </a-text>
+            
             <!-- 3D Flower Garden -->
             <a-entity 
                 id="flower-container"
@@ -516,6 +529,8 @@
             if (scene) {
                 scene.addEventListener('loaded', function() {
                     console.log('Scene loaded');
+                    // Load responses when scene is ready
+                    loadResponses();
                 });
             }
             
@@ -528,6 +543,80 @@
                 responseForm.style.display = isVisible ? 'none' : 'block';
                 responseToggle.textContent = isVisible ? '+' : 'x';
             });
+            
+            // Responses cycling variables
+            let responses = [];
+            let currentResponseIndex = -1;
+            
+            // Function to load responses from Google Sheet
+            function loadResponses() {
+                // Display some default responses while loading
+                responses = [
+                    { name: "Jane", message: "We need more green space in our neighborhood!" },
+                    { name: "Carlos", message: "It would bring our community together." },
+                    { name: "Aisha", message: "I'd love to grow vegetables with my neighbors." }
+                ];
+                
+                // URL of your deployed Google Apps Script web app with action parameter
+                const scriptURL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getResponses';
+                
+                // Attempt to load real responses
+                fetch(scriptURL)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.result === 'success' && data.responses && data.responses.length > 0) {
+                            responses = data.responses;
+                            console.log(`Loaded ${responses.length} responses`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading responses:', error);
+                    })
+                    .finally(() => {
+                        // Start cycling responses, even if using defaults
+                        if (responses.length > 0) {
+                            startResponseCycle();
+                        }
+                    });
+            }
+            
+            // Function to start cycling through responses
+            function startResponseCycle() {
+                // Show first response
+                showNextResponse();
+                
+                // Set interval to cycle through responses
+                setInterval(showNextResponse, 12000); // Change response every 12 seconds
+            }
+            
+            // Function to display the next random response
+            function showNextResponse() {
+                if (responses.length === 0) return;
+                
+                // Get a random index that's different from the current one
+                let newIndex;
+                do {
+                    newIndex = Math.floor(Math.random() * responses.length);
+                } while (responses.length > 1 && newIndex === currentResponseIndex);
+                
+                currentResponseIndex = newIndex;
+                const response = responses[currentResponseIndex];
+                
+                // Update the response display text
+                const responseDisplay = document.getElementById('response-display');
+                if (responseDisplay) {
+                    responseDisplay.setAttribute('value', `"${response.message}"\n- ${response.name}`);
+                    
+                    // Add a brief fade animation
+                    responseDisplay.setAttribute('animation__fade', {
+                        property: 'opacity',
+                        from: 0,
+                        to: 1,
+                        dur: 2000,
+                        easing: 'easeOutQuad'
+                    });
+                }
+            }
             
             // Form submission handling
             const gardenForm = document.getElementById('garden-response-form');
