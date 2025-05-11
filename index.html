@@ -38,6 +38,51 @@
             font-family: Arial, Helvetica, sans-serif;
         }
         
+        #camera-error {
+            position: fixed;
+            z-index: 999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 0, 0, 0.7);
+            color: white;
+            text-align: center;
+            padding: 10px 0;
+            display: none;
+        }
+        
+        #camera-permission-button, #camera-retry-button {
+            background: white;
+            color: black;
+            border: none;
+            padding: 8px 16px;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        #fallback-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1a;
+            z-index: 998;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            color: white;
+            text-align: center;
+        }
+        
+        #fallback-view img {
+            max-width: 90%;
+            max-height: 60%;
+            margin-bottom: 20px;
+        }
+        
         #messageForm {
             position: fixed;
             bottom: 20px;
@@ -315,12 +360,12 @@
         
         // Google Sheets integration
         // Replace these variables with your actual Google Sheet details
-        const SHEET_ID = '1vcvLgBcq6sJZMnRETjsJlriWKXF3hRPb7QMtOSsRTXA'; // e.g., '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'
+        const SHEET_ID = 'YOUR_SHEET_ID'; // e.g., '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'
         const SHEET_NAME = 'Responses';
         const SHEET_RANGE = 'A:C';
         
         // https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
-        const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxBT2wnnk8feI8gZiMBKtrAPIX0DY5E6Qry4ayF8KVEa4v5hQHJPFeUSPdObuospRF0/exec';
+        const SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL';
         
         // Function to fetch messages from Google Sheets
         async function fetchMessages() {
@@ -438,7 +483,7 @@
             }, 3000);
         }
         
-        // DOM loaded handler
+        // Camera handling and DOM loaded handler
         document.addEventListener('DOMContentLoaded', function() {
             const toggleFormButton = document.getElementById('toggleForm');
             const messageForm = document.getElementById('messageForm');
@@ -449,27 +494,159 @@
             const messagesPanel = document.getElementById('messages-panel');
             const closeMessagesButton = document.getElementById('closeMessages');
             const arjsLoader = document.querySelector('.arjs-loader');
+            const cameraErrorDiv = document.getElementById('camera-error');
+            const permissionButton = document.getElementById('camera-permission-button');
+            const retryButton = document.getElementById('camera-retry-button');
+            const fallbackView = document.getElementById('fallback-view');
             
-            // Auto-request camera
-            requestCameraPermission();
+            // Check browser compatibility first
+            checkBrowserCompatibility();
             
-            function requestCameraPermission() {
-                navigator.mediaDevices.getUserMedia({ video: true, audio: false })
+            function checkBrowserCompatibility() {
+                // Check if browser supports WebRTC
+                if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                    showFallbackView("Your browser doesn't support AR features. Please try using Chrome or Safari on a recent device.");
+                    return;
+                }
+                
+                // Check if we're on HTTPS (required for camera in most browsers)
+                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                    showFallbackView("AR requires HTTPS. Please access this page using a secure connection.");
+                    return;
+                }
+                
+                // If we pass checks, request camera access
+                checkCameraPermission();
+            }
+            
+            function checkCameraPermission() {
+                // Try to access camera permission state if available
+                if (navigator.permissions && navigator.permissions.query) {
+                    navigator.permissions.query({ name: 'camera' })
+                        .then(function(permissionStatus) {
+                            if (permissionStatus.state === 'granted') {
+                                initializeAR();
+                            } else if (permissionStatus.state === 'prompt') {
+                                requestCameraAccess();
+                            } else if (permissionStatus.state === 'denied') {
+                                showCameraError("Camera access was denied. Please enable camera access in your browser settings.");
+                            }
+                            
+                            // Listen for permission changes
+                            permissionStatus.onchange = function() {
+                                if (this.state === 'granted') {
+                                    hideCameraError();
+                                    initializeAR();
+                                }
+                            };
+                        })
+                        .catch(function() {
+                            // If permissions API fails, just try requesting access directly
+                            requestCameraAccess();
+                        });
+                } else {
+                    // Permissions API not available, try direct access
+                    requestCameraAccess();
+                }
+            }
+            
+            function requestCameraAccess() {
+                console.log("Requesting camera access...");
+                
+                // Use specific constraints for better mobile compatibility
+                const constraints = {
+                    audio: false,
+                    video: {
+                        facingMode: 'environment', // Prefer back camera
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 }
+                    }
+                };
+                
+                navigator.mediaDevices.getUserMedia(constraints)
                     .then(function(stream) {
                         console.log("Camera access granted");
                         
-                        // Hide loader after delay
-                        setTimeout(() => {
-                            arjsLoader.style.display = 'none';
-                        }, 3000);
-                        
-                        // Stop the test stream
+                        // Stop our test stream as AR.js will handle the camera
                         stream.getTracks().forEach(track => track.stop());
+                        
+                        initializeAR();
                     })
                     .catch(function(error) {
                         console.error("Camera access error:", error);
-                        alert("Camera access is required for this AR experience. Please reload and allow camera access.");
+                        
+                        if (error.name === 'NotAllowedError') {
+                            showCameraError("Camera access was denied. Please allow access to use this AR experience.");
+                        } else if (error.name === 'NotFoundError') {
+                            showCameraError("No camera found on your device.");
+                        } else if (error.name === 'NotReadableError') {
+                            showCameraError("Camera is already in use by another application.");
+                        } else {
+                            showCameraError("Error accessing camera: " + error.message);
+                        }
                     });
+            }
+            
+            function initializeAR() {
+                console.log("Initializing AR...");
+                
+                // Hide loader after a delay
+                setTimeout(() => {
+                    arjsLoader.style.display = 'none';
+                }, 3000);
+                
+                // Make scene visible if it was hidden
+                const scene = document.querySelector('a-scene');
+                if (scene) {
+                    scene.style.display = 'block';
+                }
+            }
+            
+            function showCameraError(message) {
+                if (cameraErrorDiv) {
+                    document.getElementById('camera-error-message').textContent = message;
+                    cameraErrorDiv.style.display = 'block';
+                    arjsLoader.style.display = 'none';
+                } else {
+                    alert(message);
+                }
+            }
+            
+            function hideCameraError() {
+                if (cameraErrorDiv) {
+                    cameraErrorDiv.style.display = 'none';
+                }
+            }
+            
+            function showFallbackView(message) {
+                if (fallbackView) {
+                    document.getElementById('fallback-message').textContent = message;
+                    fallbackView.style.display = 'flex';
+                    arjsLoader.style.display = 'none';
+                    
+                    // Hide AR scene
+                    const scene = document.querySelector('a-scene');
+                    if (scene) {
+                        scene.style.display = 'none';
+                    }
+                } else {
+                    alert(message);
+                }
+            }
+            
+            // Camera permission button event
+            if (permissionButton) {
+                permissionButton.addEventListener('click', function() {
+                    requestCameraAccess();
+                });
+            }
+            
+            // Camera retry button event
+            if (retryButton) {
+                retryButton.addEventListener('click', function() {
+                    hideCameraError();
+                    requestCameraAccess();
+                });
             }
             
             // Toggle form button
@@ -477,7 +654,9 @@
                 toggleFormButton.addEventListener('click', function() {
                     messageForm.style.display = messageForm.style.display === 'none' ? 'block' : 'none';
                     // Hide messages panel if open
-                    messagesPanel.style.display = 'none';
+                    if (messagesPanel) {
+                        messagesPanel.style.display = 'none';
+                    }
                 });
             }
             
@@ -524,10 +703,26 @@
     </script>
 </head>
 <body style="margin: 0; overflow: hidden;">
+    <!-- Camera Error Message -->
+    <div id="camera-error">
+        <p id="camera-error-message">Camera access was denied.</p>
+        <button id="camera-retry-button">Try Again</button>
+    </div>
+    
+    <!-- Fallback View if AR is not supported -->
+    <div id="fallback-view">
+        <h2>AR Not Available</h2>
+        <p id="fallback-message"></p>
+        <img src="https://via.placeholder.com/800x600?text=Community+Garden+Concept" alt="Community Garden Concept">
+        <button id="camera-permission-button">Request Camera Permission</button>
+    </div>
+    
     <div class="arjs-loader">
         <div>
             <h1>Community Garden AR</h1>
             <p>Loading... Please allow camera access when prompted.</p>
+            <p>If nothing happens, try clicking the "Request Camera" button below.</p>
+            <button id="camera-permission-button">Request Camera</button>
         </div>
     </div>
     
@@ -560,8 +755,8 @@
     <a-scene 
         vr-mode-ui="enabled: false"
         embedded
-        arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;'
-        renderer="logarithmicDepthBuffer: true; precision: mediump; colorManagement: true;"
+        arjs='sourceType: webcam; videoTexture: true; debugUIEnabled: false; detectionMode: mono_and_matrix; maxDetectionRate: 60; canvasWidth: 1280; canvasHeight: 960;'
+        renderer="antialias: true; alpha: true; precision: mediump; logarithmicDepthBuffer: true;"
         loading-screen="enabled: false">
         
         <!-- Extruded white text -->
@@ -578,7 +773,7 @@
         </a-entity>
         
         <!-- Camera -->
-        <a-entity camera look-controls position="0 0 0"></a-entity>
+        <a-entity camera look-controls="reverseMouseDrag: false" position="0 0 0"></a-entity>
         
         <!-- Font for text geometry -->
         <a-assets>
