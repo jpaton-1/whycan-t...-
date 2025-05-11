@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple AR Test</title>
+    <title>Simple Garden AR</title>
     
     <!-- A-Frame and AR.js -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
@@ -33,151 +33,141 @@
             max-width: 80%;
             font-family: Arial, Helvetica, sans-serif;
         }
-        
-        #camera-error {
-            position: fixed;
-            z-index: 1000;
-            top: 0;
-            left: 0;
-            width: 100%;
-            background: rgba(255, 0, 0, 0.7);
-            color: white;
-            text-align: center;
-            padding: 10px 0;
-            display: none;
-        }
-        
-        #debug-panel {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            padding: 10px;
-            border-radius: 5px;
-            font-family: monospace;
-            font-size: 12px;
-            z-index: 1000;
-            width: 200px;
-            height: 100px;
-            overflow: auto;
-        }
     </style>
+    
+    <script>
+        // Flower model placer component
+        AFRAME.registerComponent('flower-garden', {
+            schema: {
+                flowerCount: {type: 'number', default: 15},
+                radius: {type: 'number', default: 3}
+            },
+            
+            init: function() {
+                this.placeFlowers();
+            },
+            
+            placeFlowers: function() {
+                // Local flower model files from repository
+                const flowerModels = [
+                    '6 Orchid.glb',
+                    '7 Poppy.glb',
+                    '8 Iris.glb',
+                    '13 Marigold.glb',
+                    '16 Lavender.glb',
+                    '17 Hibiscus.glb',
+                    '20 Violet.glb',
+                    '24 Cosmos.glb',
+                    '25 Snapdragon.glb',
+                    '26 Morning Glory.glb',
+                    '27 Anemone.glb',
+                    '30 Primrose.glb'
+                ];
+                
+                // Place flowers in a circular pattern on the ground
+                for (let i = 0; i < this.data.flowerCount; i++) {
+                    // Calculate position in a circle with some randomness
+                    const angle = (i / this.data.flowerCount) * Math.PI * 2;
+                    const randomRadius = this.data.radius * (0.3 + Math.random() * 0.7);
+                    const x = Math.cos(angle) * randomRadius;
+                    const z = Math.sin(angle) * randomRadius;
+                    
+                    // Randomize model selection
+                    const modelIndex = Math.floor(Math.random() * flowerModels.length);
+                    const modelUrl = flowerModels[modelIndex];
+                    
+                    // Create flower entity
+                    const flower = document.createElement('a-entity');
+                    flower.setAttribute('gltf-model', modelUrl);
+                    
+                    // Position flower on ground level with slight variation
+                    flower.setAttribute('position', {x: x, y: -2.0, z: z});
+                    
+                    // Random scale, but keep it proportional
+                    const scale = 0.5 + Math.random() * 0.3;
+                    flower.setAttribute('scale', {
+                        x: scale,
+                        y: scale,
+                        z: scale
+                    });
+                    
+                    flower.setAttribute('rotation', {
+                        x: 0, 
+                        y: Math.random() * 360, 
+                        z: 0
+                    });
+                    
+                    // Add spring-up animation
+                    flower.setAttribute('animation', {
+                        property: 'position',
+                        from: `${x} -2.2 ${z}`,
+                        to: `${x} -2.0 ${z}`,
+                        dur: 3000 + Math.random() * 2000,
+                        delay: Math.random() * 3000,
+                        easing: 'easeOutElastic',
+                        loop: false
+                    });
+                    
+                    this.el.appendChild(flower);
+                }
+            }
+        });
+    </script>
 </head>
 <body style="margin: 0; overflow: hidden;">
-    <!-- Camera Error Message -->
-    <div id="camera-error">
-        <p>Camera access error. Please check browser permissions.</p>
-    </div>
-    
-    <!-- Debug Panel -->
-    <div id="debug-panel">
-        <div id="debug-content">Debug info will appear here</div>
-    </div>
-    
     <div class="arjs-loader">
         <div>
-            <h1>Simple AR Test</h1>
+            <h1>Garden AR</h1>
             <p>Loading... Please allow camera access when prompted.</p>
         </div>
     </div>
     
-    <!-- AR Scene -->
     <a-scene 
         vr-mode-ui="enabled: false"
         embedded
-        arjs='sourceType: webcam; debugUIEnabled: true; detectionMode: mono_and_matrix;'
-        renderer="logarithmicDepthBuffer: true;"
-        loading-screen="enabled: false">
+        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;"
+        renderer="logarithmicDepthBuffer: true;">
         
-        <!-- Basic 3D Test Objects -->
-        <a-box position="0 0.5 -3" rotation="0 45 0" color="#4CC3D9" shadow></a-box>
-        <a-sphere position="-1 0.5 -3" radius="0.5" color="#EF2D5E" shadow></a-sphere>
-        <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D" shadow></a-cylinder>
-        <a-plane position="0 0 -3" rotation="-90 0 0" width="4" height="4" color="#7BC8A4" shadow></a-plane>
+        <!-- Simple Text (No 3D extrusion or fancy fonts) -->
+        <a-text 
+            value="Why can't this be a community garden?"
+            color="white" 
+            align="center"
+            width="4"
+            position="0 0.5 -4"
+            scale="1 1 1">
+        </a-text>
+        
+        <!-- 3D Flower Garden -->
+        <a-entity 
+            position="0 0 -4"
+            flower-garden="flowerCount: 15; radius: 3">
+        </a-entity>
         
         <!-- Camera -->
         <a-entity camera></a-entity>
     </a-scene>
     
     <script>
+        // Simple loader handling
         document.addEventListener('DOMContentLoaded', function() {
-            const debugPanel = document.getElementById('debug-content');
             const arjsLoader = document.querySelector('.arjs-loader');
-            const cameraErrorDiv = document.getElementById('camera-error');
             
-            // Add debug message
-            function debug(message) {
-                console.log(message);
-                if (debugPanel) {
-                    debugPanel.innerHTML += message + '<br>';
+            // Hide loader after a set time
+            setTimeout(() => {
+                if (arjsLoader) {
+                    arjsLoader.style.display = 'none';
                 }
-            }
+            }, 3000);
             
-            debug('Page loaded. Checking camera...');
-            
-            // Show camera error
-            function showCameraError(message) {
-                debug('Camera error: ' + message);
-                if (cameraErrorDiv) {
-                    cameraErrorDiv.textContent = 'Camera error: ' + message;
-                    cameraErrorDiv.style.display = 'block';
-                }
-                arjsLoader.style.display = 'none';
-            }
-            
-            // Try to get camera access
-            function requestCameraAccess() {
-                debug('Requesting camera...');
-                
-                navigator.mediaDevices.getUserMedia({ 
-                    video: { 
-                        facingMode: 'environment',
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
-                    }, 
-                    audio: false 
-                })
-                .then(function(stream) {
-                    debug('Camera access granted');
-                    
-                    // Show camera stream dimensions
-                    const videoTracks = stream.getVideoTracks();
-                    if (videoTracks.length > 0) {
-                        const settings = videoTracks[0].getSettings();
-                        debug(`Camera: ${settings.width}x${settings.height}`);
-                    }
-                    
-                    // We need to stop this stream since AR.js will create its own
-                    stream.getTracks().forEach(track => track.stop());
-                    
-                    // Hide loader after delay
-                    setTimeout(() => {
-                        arjsLoader.style.display = 'none';
-                    }, 3000);
-                })
-                .catch(function(error) {
-                    showCameraError(error.name + ': ' + error.message);
-                });
-            }
-            
-            // Check browser compatibility
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                showCameraError('Your browser does not support WebRTC camera access');
-            } else {
-                requestCameraAccess();
-            }
-            
-            // Listen for AR.js camera-init event
+            // Also listen for scene loaded event as backup
             const scene = document.querySelector('a-scene');
             if (scene) {
-                scene.addEventListener('camera-init', function() {
-                    debug('AR.js camera initialized');
-                });
-                
-                scene.addEventListener('camera-error', function(ev) {
-                    debug('AR.js camera error: ' + ev.detail.message);
-                    showCameraError(ev.detail.message);
+                scene.addEventListener('loaded', function() {
+                    console.log('Scene loaded');
+                    if (arjsLoader) {
+                        arjsLoader.style.display = 'none';
+                    }
                 });
             }
         });
