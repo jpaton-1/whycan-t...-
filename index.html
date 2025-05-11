@@ -9,8 +9,9 @@
     <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     
-    <!-- GLTF loader for 3D models -->
+    <!-- GLTF loader and text geometry for 3D models and text -->
     <script src="https://unpkg.com/aframe-extras@6.1.1/dist/aframe-extras.min.js"></script>
+    <script src="https://unpkg.com/aframe-text-geometry-component@0.5.1/dist/aframe-text-geometry-component.min.js"></script>
     
     <style>
         .arjs-loader {
@@ -56,7 +57,7 @@
             color: #4a7c59;
         }
         
-        #messageForm input, #messageForm button {
+        #messageForm input, #messageForm button, #messageForm textarea {
             margin: 5px 0;
             padding: 10px;
             border-radius: 5px;
@@ -88,17 +89,78 @@
             cursor: pointer;
         }
         
-        #debug-info {
+        #status-message {
             position: fixed;
             top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+            width: 80%;
+            text-align: center;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: rgba(0, 0, 0, 0.7);
             color: white;
-            font-family: monospace;
-            padding: 5px;
-            font-size: 12px;
             z-index: 1000;
             display: none;
+        }
+        
+        /* View Messages Button */
+        .view-messages {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background: #4a7c59;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            cursor: pointer;
+        }
+        
+        /* Messages panel */
+        #messages-panel {
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-height: 80%;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 10px;
+            z-index: 1001;
+            padding: 15px;
+            display: none;
+            overflow-y: auto;
+        }
+        
+        #messages-panel h2 {
+            margin-top: 0;
+            color: #4a7c59;
+            text-align: center;
+        }
+        
+        .message-item {
+            border-bottom: 1px solid #eee;
+            padding: 10px 0;
+        }
+        
+        .message-item strong {
+            color: #4a7c59;
+        }
+        
+        .close-button {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #4a7c59;
+            color: white;
+            border: none;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
         }
     </style>
     
@@ -250,87 +312,130 @@
                 }
             }
         });
-            }
-        });
         
-        // Message board system
-        let messages = [];
-        const MAX_MESSAGES = 5;
+        // Google Sheets integration
+        // Replace these variables with your actual Google Sheet details
+        const SHEET_ID = 'YOUR_SHEET_ID'; // e.g., '1BxiMVs0XRA5nFMdKvBdBZjgmUUqptlbs74OgvE2upms'
+        const SHEET_NAME = 'Responses';
+        const SHEET_RANGE = 'A:C';
         
-        function addMessage(name, text) {
-            const messageBoard = document.getElementById('messageBoard');
-            
-            // Create message group
-            const messageEntity = document.createElement('a-entity');
-            messageEntity.setAttribute('class', 'message');
-            
-            // Create message background
-            const background = document.createElement('a-box');
-            background.setAttribute('width', 2);
-            background.setAttribute('height', 0.25);
-            background.setAttribute('depth', 0.02);
-            background.setAttribute('color', '#ffffff');
-            background.setAttribute('opacity', 0.8);
-            background.setAttribute('position', {x: 0, y: 0, z: -0.01});
-            background.setAttribute('material', 'shader: standard; roughness: 0.3; metalness: 0.2');
-            messageEntity.appendChild(background);
-            
-            // Add name text
-            const nameText = document.createElement('a-text');
-            nameText.setAttribute('value', name + ":");
-            nameText.setAttribute('color', '#4a7c59');
-            nameText.setAttribute('width', 1.8);
-            nameText.setAttribute('position', {x: -0.9, y: 0.05, z: 0.01});
-            nameText.setAttribute('align', 'left');
-            nameText.setAttribute('scale', {x: 0.3, y: 0.3, z: 0.3});
-            messageEntity.appendChild(nameText);
-            
-            // Add message text
-            const messageText = document.createElement('a-text');
-            messageText.setAttribute('value', text);
-            messageText.setAttribute('color', '#000000');
-            messageText.setAttribute('width', 1.8);
-            messageText.setAttribute('position', {x: -0.9, y: -0.05, z: 0.01});
-            messageText.setAttribute('align', 'left');
-            messageText.setAttribute('scale', {x: 0.3, y: 0.3, z: 0.3});
-            messageEntity.appendChild(messageText);
-            
-            // Add animation for appearing
-            messageEntity.setAttribute('animation', {
-                property: 'scale',
-                from: '0.1 0.1 0.1',
-                to: '1 1 1',
-                dur: 800,
-                easing: 'easeOutElastic'
-            });
-            
-            messageBoard.appendChild(messageEntity);
-            messages.push(messageEntity);
-            
-            // Reposition all messages
-            repositionMessages();
-        }
+        // https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec
+        const SCRIPT_URL = 'YOUR_GOOGLE_SCRIPT_URL';
         
-        // Reposition all messages to prevent overlap
-        function repositionMessages() {
-            if (messages.length > MAX_MESSAGES) {
-                const oldestMessage = messages.shift();
-                if (oldestMessage.parentNode) {
-                    oldestMessage.parentNode.removeChild(oldestMessage);
+        // Function to fetch messages from Google Sheets
+        async function fetchMessages() {
+            try {
+                // Use the Sheets API to get published sheet data
+                const response = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/${SHEET_NAME}!${SHEET_RANGE}?key=YOUR_API_KEY`);
+                
+                // For development/testing, you can use a published CSV version of your sheet
+                // const response = await fetch(`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}&range=${SHEET_RANGE}`);
+                
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
                 }
+                
+                const data = await response.json();
+                
+                // Skip header row and reverse to show newest first
+                const messages = data.values.slice(1).reverse();
+                
+                // Display messages in the panel
+                displayMessages(messages);
+                
+                return messages;
+            } catch (error) {
+                console.error('Error fetching messages:', error);
+                showStatus('Could not load messages. Please try again later.', 'error');
+                return [];
+            }
+        }
+        
+        // Function to display messages in the panel
+        function displayMessages(messages) {
+            const messagesContainer = document.getElementById('messages-list');
+            messagesContainer.innerHTML = '';
+            
+            if (messages.length === 0) {
+                messagesContainer.innerHTML = '<p>No messages yet. Be the first to share your thoughts!</p>';
+                return;
             }
             
-            messages.forEach((msg, index) => {
-                const yPos = -0.3 * index;
-                msg.setAttribute('position', {x: 0, y: yPos, z: 0});
+            // Create HTML for each message
+            messages.forEach(message => {
+                if (message && message.length >= 2) {
+                    const name = message[0] || 'Anonymous';
+                    const text = message[1] || '';
+                    const timestamp = message[2] || '';
+                    
+                    const messageEl = document.createElement('div');
+                    messageEl.className = 'message-item';
+                    messageEl.innerHTML = `
+                        <strong>${name}</strong>: ${text}
+                        <div class="message-time">${timestamp}</div>
+                    `;
+                    
+                    messagesContainer.appendChild(messageEl);
+                }
             });
         }
         
-        // Debug helper
-        function showDebugInfo(text) {
-            const debugDiv = document.getElementById('debug-info');
-            debugDiv.style.display = 'block';
-            debugDiv.innerHTML += text + '<br>';
+        // Function to submit a new message to Google Sheets
+        async function submitMessage(name, message) {
+            try {
+                showStatus('Submitting your message...', 'info');
+                
+                // Create form data
+                const formData = new FormData();
+                formData.append('name', name);
+                formData.append('message', message);
+                formData.append('timestamp', new Date().toLocaleString());
+                
+                // Send data to Google Apps Script
+                const response = await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to submit message');
+                }
+                
+                const result = await response.json();
+                
+                if (result.result === 'success') {
+                    showStatus('Your message has been submitted!', 'success');
+                    return true;
+                } else {
+                    throw new Error(result.error || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('Error submitting message:', error);
+                showStatus('Failed to submit message. Please try again.', 'error');
+                return false;
+            }
+        }
+        
+        // Helper function to show status messages
+        function showStatus(message, type = 'info') {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            
+            // Set color based on type
+            if (type === 'error') {
+                statusEl.style.backgroundColor = 'rgba(220, 53, 69, 0.8)';
+            } else if (type === 'success') {
+                statusEl.style.backgroundColor = 'rgba(40, 167, 69, 0.8)';
+            } else {
+                statusEl.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+            }
+            
+            statusEl.style.display = 'block';
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                statusEl.style.display = 'none';
+            }, 3000);
         }
         
         // DOM loaded handler
@@ -340,6 +445,9 @@
             const nameInput = document.getElementById('nameInput');
             const messageInput = document.getElementById('messageInput');
             const submitButton = document.getElementById('submitMessage');
+            const viewMessagesButton = document.getElementById('viewMessages');
+            const messagesPanel = document.getElementById('messages-panel');
+            const closeMessagesButton = document.getElementById('closeMessages');
             const arjsLoader = document.querySelector('.arjs-loader');
             
             // Auto-request camera
@@ -365,40 +473,57 @@
             }
             
             // Toggle form button
-            toggleFormButton.addEventListener('click', function() {
-                messageForm.style.display = messageForm.style.display === 'none' ? 'block' : 'none';
-            });
+            if (toggleFormButton) {
+                toggleFormButton.addEventListener('click', function() {
+                    messageForm.style.display = messageForm.style.display === 'none' ? 'block' : 'none';
+                    // Hide messages panel if open
+                    messagesPanel.style.display = 'none';
+                });
+            }
             
             // Submit message
-            submitButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                const name = nameInput.value.trim();
-                const message = messageInput.value.trim();
-                
-                if (name && message) {
-                    addMessage(name, message);
+            if (submitButton) {
+                submitButton.addEventListener('click', async function(e) {
+                    e.preventDefault();
                     
-                    // Clear form and hide
-                    messageInput.value = '';
-                    messageForm.style.display = 'none';
-                } else {
-                    alert("Please enter your name and message!");
-                }
-            });
+                    const name = nameInput.value.trim();
+                    const message = messageInput.value.trim();
+                    
+                    if (name && message) {
+                        const success = await submitMessage(name, message);
+                        
+                        if (success) {
+                            // Clear form and hide
+                            messageInput.value = '';
+                            messageForm.style.display = 'none';
+                        }
+                    } else {
+                        showStatus('Please enter your name and message!', 'error');
+                    }
+                });
+            }
             
-            // Add sample messages after a delay
-            setTimeout(() => {
-                addMessage("Amanda", "I love this idea! We need more green spaces.");
-                addMessage("Carlos", "My grandmother would enjoy helping tend to this.");
-            }, 6000);
+            // View messages button
+            if (viewMessagesButton) {
+                viewMessagesButton.addEventListener('click', function() {
+                    messagesPanel.style.display = 'block';
+                    // Hide form if open
+                    messageForm.style.display = 'none';
+                    // Fetch and display messages
+                    fetchMessages();
+                });
+            }
+            
+            // Close messages panel
+            if (closeMessagesButton) {
+                closeMessagesButton.addEventListener('click', function() {
+                    messagesPanel.style.display = 'none';
+                });
+            }
         });
     </script>
 </head>
 <body style="margin: 0; overflow: hidden;">
-    <!-- Debug information -->
-    <div id="debug-info"></div>
-    
     <div class="arjs-loader">
         <div>
             <h1>Community Garden AR</h1>
@@ -406,16 +531,31 @@
         </div>
     </div>
     
+    <!-- Status Message Display -->
+    <div id="status-message"></div>
+    
     <!-- Message Form -->
     <form id="messageForm">
         <h3>Share Your Thoughts</h3>
         <input type="text" id="nameInput" placeholder="Your Name" required>
-        <input type="text" id="messageInput" placeholder="Your Message" required>
+        <textarea id="messageInput" placeholder="Your Message" rows="3" required></textarea>
         <button type="button" id="submitMessage">Submit</button>
     </form>
     
+    <!-- View Messages Button -->
+    <button class="view-messages" id="viewMessages">View All Messages</button>
+    
     <!-- Toggle Form Button -->
     <button class="toggle-form" id="toggleForm">+</button>
+    
+    <!-- Messages Panel -->
+    <div id="messages-panel">
+        <h2>Community Responses</h2>
+        <button class="close-button" id="closeMessages">×</button>
+        <div id="messages-list">
+            <p>Loading messages...</p>
+        </div>
+    </div>
     
     <a-scene 
         vr-mode-ui="enabled: false"
