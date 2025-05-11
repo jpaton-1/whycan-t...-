@@ -3,11 +3,12 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simple Garden AR</title>
+    <title>Community Garden AR</title>
     
-    <!-- A-Frame and AR.js -->
+    <!-- A-Frame and AR.js with location-based support -->
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-locations-only.js"></script>
     
     <style>
         .arjs-loader {
@@ -33,9 +34,47 @@
             max-width: 80%;
             font-family: Arial, Helvetica, sans-serif;
         }
+        
+        .location-info {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            color: white;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 5px 10px;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            z-index: 999;
+        }
     </style>
     
     <script>
+        // Helper function to convert decimal degrees to radians
+        function toRadians(degrees) {
+            return degrees * Math.PI / 180;
+        }
+        
+        // Helper function to convert radians to decimal degrees
+        function toDegrees(radians) {
+            return radians * 180 / Math.PI;
+        }
+        
+        // Function to calculate distance between two coordinates
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = toRadians(lat1);
+            const φ2 = toRadians(lat2);
+            const Δφ = toRadians(lat2 - lat1);
+            const Δλ = toRadians(lon2 - lon1);
+            
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            
+            return R * c; // Distance in meters
+        }
+        
         // Flower model placer component
         AFRAME.registerComponent('flower-garden', {
             schema: {
@@ -44,7 +83,10 @@
             },
             
             init: function() {
-                this.placeFlowers();
+                // Wait a moment to ensure everything is loaded
+                setTimeout(() => {
+                    this.placeFlowers();
+                }, 1000);
             },
             
             placeFlowers: function() {
@@ -80,8 +122,8 @@
                     const flower = document.createElement('a-entity');
                     flower.setAttribute('gltf-model', modelUrl);
                     
-                    // Position flower on ground level with slight variation
-                    flower.setAttribute('position', {x: x, y: -2.0, z: z});
+                    // Start position below ground
+                    flower.setAttribute('position', {x: x, y: -1.5, z: z});
                     
                     // Random scale, but keep it proportional
                     const scale = 0.5 + Math.random() * 0.3;
@@ -97,18 +139,102 @@
                         z: 0
                     });
                     
-                    // Add spring-up animation
-                    flower.setAttribute('animation', {
+                    // Add grow-up animation
+                    flower.setAttribute('animation__grow', {
                         property: 'position',
-                        from: `${x} -2.2 ${z}`,
-                        to: `${x} -2.0 ${z}`,
+                        from: `${x} -1.5 ${z}`,
+                        to: `${x} -0.5 ${z}`,
                         dur: 3000 + Math.random() * 2000,
-                        delay: Math.random() * 3000,
+                        delay: 1000 + Math.random() * 5000,
                         easing: 'easeOutElastic',
                         loop: false
                     });
                     
+                    // Add subtle sway animation
+                    flower.setAttribute('animation__sway', {
+                        property: 'rotation',
+                        from: `0 ${Math.random() * 360} 0`,
+                        to: `0 ${Math.random() * 360} 0`,
+                        dur: 10000 + Math.random() * 5000,
+                        delay: 4000 + Math.random() * 2000,
+                        easing: 'easeInOutSine',
+                        loop: true,
+                        dir: 'alternate'
+                    });
+                    
                     this.el.appendChild(flower);
+                }
+            }
+        });
+        
+        // Location proximity checker component
+        AFRAME.registerComponent('location-check', {
+            schema: {
+                targetLat: {type: 'number', default: 35.996417},
+                targetLon: {type: 'number', default: -78.909944},
+                threshold: {type: 'number', default: 100} // Distance threshold in meters
+            },
+            
+            init: function() {
+                this.checkingLocation = false;
+                this.locationDisplay = document.createElement('div');
+                this.locationDisplay.className = 'location-info';
+                document.body.appendChild(this.locationDisplay);
+                
+                // Start checking location when user has allowed geolocation
+                this.startLocationCheck();
+            },
+            
+            startLocationCheck: function() {
+                if (this.checkingLocation) return;
+                this.checkingLocation = true;
+                
+                const component = this;
+                
+                // Check location periodically
+                this.locationInterval = setInterval(() => {
+                    if ('geolocation' in navigator) {
+                        navigator.geolocation.getCurrentPosition((position) => {
+                            const currentLat = position.coords.latitude;
+                            const currentLon = position.coords.longitude;
+                            const distance = calculateDistance(
+                                currentLat, currentLon,
+                                component.data.targetLat, component.data.targetLon
+                            );
+                            
+                            // Update location info display
+                            component.locationDisplay.innerHTML = `
+                                <div>Current: ${currentLat.toFixed(6)}, ${currentLon.toFixed(6)}</div>
+                                <div>Target: ${component.data.targetLat.toFixed(6)}, ${component.data.targetLon.toFixed(6)}</div>
+                                <div>Distance: ${distance.toFixed(1)}m</div>
+                            `;
+                            
+                            // If we're close enough to the target location
+                            if (distance < component.data.threshold) {
+                                component.locationDisplay.innerHTML += '<div><strong>You are near the garden location!</strong></div>';
+                            } else {
+                                component.locationDisplay.innerHTML += `<div>Move ${distance.toFixed(1)}m closer to see the garden</div>`;
+                            }
+                        }, (error) => {
+                            component.locationDisplay.innerHTML = `Location error: ${error.message}`;
+                        }, {
+                            enableHighAccuracy: true,
+                            maximumAge: 0,
+                            timeout: 5000
+                        });
+                    } else {
+                        component.locationDisplay.innerHTML = 'Geolocation not available in your browser';
+                        clearInterval(component.locationInterval);
+                    }
+                }, 3000);
+            },
+            
+            remove: function() {
+                if (this.locationInterval) {
+                    clearInterval(this.locationInterval);
+                }
+                if (this.locationDisplay.parentNode) {
+                    this.locationDisplay.parentNode.removeChild(this.locationDisplay);
                 }
             }
         });
@@ -117,57 +243,70 @@
 <body style="margin: 0; overflow: hidden;">
     <div class="arjs-loader">
         <div>
-            <h1>Garden AR</h1>
-            <p>Loading... Please allow camera access when prompted.</p>
+            <h1>Community Garden AR</h1>
+            <p>Loading... Please allow camera and location access when prompted.</p>
+            <p>This experience works best when you are near the target location.</p>
         </div>
     </div>
     
     <a-scene 
         vr-mode-ui="enabled: false"
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix;"
-        renderer="logarithmicDepthBuffer: true;">
+        arjs="sourceType: webcam; debugUIEnabled: false; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
+        renderer="logarithmicDepthBuffer: true;"
+        location-check="targetLat: 35.996417; targetLon: -78.909944; threshold: 100">
         
-        <!-- Simple Text (No 3D extrusion or fancy fonts) -->
-        <a-text 
-            value="Why can't this be a community garden?"
-            color="white" 
-            align="center"
-            width="4"
-            position="0 0.5 -4"
-            scale="1 1 1">
-        </a-text>
-        
-        <!-- 3D Flower Garden -->
-        <a-entity 
-            position="0 0 -4"
-            flower-garden="flowerCount: 15; radius: 3">
+        <!-- GPS-anchored entities -->
+        <a-entity
+            gps-entity-place="latitude: 35.996417; longitude: -78.909944;">
+            
+            <!-- Text floating above the garden -->
+            <a-text 
+                value="Why can't this be a community garden?"
+                color="white" 
+                align="center"
+                width="4"
+                position="0 1.5 0"
+                scale="1 1 1"
+                animation="property: position; to: 0 1.7 0; dur: 3000; easing: easeInOutSine; loop: true; dir: alternate;">
+            </a-text>
+            
+            <!-- 3D Flower Garden -->
+            <a-entity 
+                position="0 0 0"
+                flower-garden="flowerCount: 20; radius: 4">
+            </a-entity>
         </a-entity>
         
-        <!-- Camera -->
-        <a-entity camera></a-entity>
+        <!-- Camera with GPS tracking -->
+        <a-camera gps-camera="simulateLatitude: 35.996417; simulateLongitude: -78.909944;" rotation-reader></a-camera>
     </a-scene>
     
     <script>
-        // Simple loader handling
+        // Loader handling
         document.addEventListener('DOMContentLoaded', function() {
             const arjsLoader = document.querySelector('.arjs-loader');
             
-            // Hide loader after a set time
+            // Hide loader after GPS data is initialized
+            window.addEventListener('gps-camera-update-position', function() {
+                if (arjsLoader) {
+                    arjsLoader.style.display = 'none';
+                }
+                console.log('GPS position updated');
+            });
+            
+            // Fallback loader hiding
             setTimeout(() => {
                 if (arjsLoader) {
                     arjsLoader.style.display = 'none';
                 }
-            }, 3000);
+            }, 8000);
             
-            // Also listen for scene loaded event as backup
+            // Scene loaded event
             const scene = document.querySelector('a-scene');
             if (scene) {
                 scene.addEventListener('loaded', function() {
                     console.log('Scene loaded');
-                    if (arjsLoader) {
-                        arjsLoader.style.display = 'none';
-                    }
                 });
             }
         });
