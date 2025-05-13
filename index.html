@@ -1,87 +1,291 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Why can't this be a community garden? (Location Based)</title>
+    <title>Why can't this be a community garden? (Location Based v2)</title>
 
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
-    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-locations-only.js"></script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
+    <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Gwendolyn:wght@700&family=Roboto:wght@400;700&display=swap"
         rel="stylesheet">
 
     <style>
-        /* Styles from index.html - prioritized */
-        body { margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; overflow: hidden; background-color: #000; }
-        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 3000; text-align: center; padding: 20px; box-sizing: border-box; }
-        #loading h1 { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 2.5em; margin-bottom: 15px; }
-        #loading p { font-size: 1.1em; margin-bottom: 20px;}
-        
-        /* AR.js Loader specific style - can be customized or merged with #loading */
-        .arjs-loader-display { position: fixed; z-index: 9999; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; text-align: center; color: white; font-family: 'Roboto', sans-serif;}
-        .arjs-loader-display p { font-size: 1.2em; padding: 0 20px;}
-
-        /* #camera-feed is managed by AR.js, so direct styling might not be needed or might conflict */
-        /* #canvas-container & #css2d-container are also managed by A-Frame/Three.js within A-Frame context */
-
-        /* Message text within the AR scene (will be an a-text) - this style is for the original HTML version */
-        /* For A-Frame, we'd style <a-text> directly or the HTML elements used for overlays */
-        .message-container-style { /* This class can be applied to an overlay div if needed */
-            color: white; background: none; padding: 5px; text-align: center; 
-            font-family: 'Gwendolyn', cursive; font-weight: 700; font-size: 8vw; /* Adjusted for potential overlay */
-            line-height: 1.1; pointer-events: none; /* none if just display, auto if interactive overlay */
-            text-shadow: 1px 1px 2px rgba(0,0,0,0.7), 2px 2px 5px rgba(0,0,0,0.5); 
-            white-space: normal; max-width: 90%; box-sizing: border-box;
-            position: fixed; top: 10%; left: 50%; transform: translateX(-50%); z-index: 100;
+        /* Styles remain the same as previous version */
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Roboto', Arial, sans-serif;
+            overflow: hidden;
+            background-color: #000;
         }
 
-        .dynamic-response-display-style { /* This class can be applied to an overlay div for responses */
-            color: #C8FFC5; background-color: rgba(0, 0, 0, 0.65); padding: 8px 12px; 
-            border-radius: 8px; text-align: center; font-family: 'Roboto', sans-serif;
-            font-size: 15px; font-weight: 400; pointer-events: auto; max-width: 250px; 
-            box-sizing: border-box; text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
-            position: fixed; /* Example positioning, manage dynamically for AR effect */
-            bottom: 150px; left: 50%; transform: translateX(-50%);
-            z-index: 100; display: none; /* Controlled by script */
-        }
-
-        .controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: space-around; padding: 0 20px; box-sizing: border-box; z-index: 1000; }
-        .btn { width: 60px; height: 60px; border-radius: 50%; color: white; border: none; font-family: 'Roboto', sans-serif; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; }
-        
-        /* Button IDs might change or be re-purposed */
-        #place-btn { background-color: #4CAF50; /* May not be used if garden appears automatically */ display: none;} 
-        #reset-btn { background-color: #f44336; display: none; /* Initially hidden */}
-        #response-toggle { background-color: #2196F3; display: none; /* Initially hidden */}
-
-        #response-form-container { /* Renamed container to avoid conflict if #response-form is A-Frame internal */
-            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); 
-            width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.85); 
-            backdrop-filter: blur(5px); border-radius: 15px; padding: 20px; color: white; 
-            z-index: 1001; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
-        }
-        #response-form-container input, #response-form-container textarea { width: calc(100% - 20px); padding: 10px; margin: 8px 0 12px; border: 1px solid #555; border-radius: 5px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 16px; }
-        #response-form-container textarea { height: 80px; resize: none; } 
-        #response-form-container button { background: #4CAF50; color: white; border: none; padding: 12px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; }
-        #response-form-container h3 { margin-top: 0; text-align: center; font-weight: 700; } 
-        #response-status { margin-top: 12px; text-align: center; font-weight: bold; min-height: 20px; }
-
-        #instructions { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(3px); color: white; padding: 12px 18px; border-radius: 10px; text-align: center; font-size: 16px; z-index: 1000; max-width: 80%;}
-        
-        /* Permission overlay from index.html, may need adjustment for location permissions */
-        #permission-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); z-index: 4000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; padding: 20px; }
-        #permission-overlay h2 { font-weight: 700; } 
-        #permission-btn { margin-top: 20px; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: 700; cursor: pointer; }
-
-        #debug-info { position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: #0f0; padding: 8px 12px; border-radius: 5px; font-size: 11px; font-family: monospace; z-index: 2500; display: none; width: calc(100% - 40px); max-height: 150px; overflow-y: auto; }
-        
-        .location-info-style { /* For the GPS debug info from Why Can't index.html */
+        #loading {
             position: fixed;
-            bottom: 100px; /* Adjusted to not overlap controls */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 3000;
+            text-align: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #loading h1 {
+            font-family: 'Roboto', sans-serif;
+            font-weight: 700;
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+
+        #loading p {
+            font-size: 1.1em;
+            margin-bottom: 20px;
+        }
+
+        .arjs-loader-display {
+            position: fixed;
+            z-index: 9999;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            font-family: 'Roboto', sans-serif;
+        }
+
+        .arjs-loader-display p {
+            font-size: 1.2em;
+            padding: 0 20px;
+        }
+
+        .message-container-style {
+            color: white;
+            background: none;
+            padding: 5px;
+            text-align: center;
+            font-family: 'Gwendolyn', cursive;
+            font-weight: 700;
+            font-size: 8vw;
+            line-height: 1.1;
+            pointer-events: none;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.7), 2px 2px 5px rgba(0, 0, 0, 0.5);
+            white-space: normal;
+            max-width: 90%;
+            box-sizing: border-box;
+            position: fixed;
+            top: 10%;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+
+        .dynamic-response-display-style {
+            color: #C8FFC5;
+            background-color: rgba(0, 0, 0, 0.65);
+            padding: 8px 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-family: 'Roboto', sans-serif;
+            font-size: 15px;
+            font-weight: 400;
+            pointer-events: auto;
+            max-width: 250px;
+            box-sizing: border-box;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+            position: fixed;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            display: none;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 1000;
+        }
+
+        .btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            color: white;
+            border: none;
+            font-family: 'Roboto', sans-serif;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        #place-btn {
+            background-color: #4CAF50;
+            display: none;
+        }
+
+        #reset-btn {
+            background-color: #f44336;
+            display: none;
+        }
+
+        #response-toggle {
+            background-color: #2196F3;
+            display: none;
+        }
+
+        #response-form-container {
+            position: fixed;
+            bottom: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 400px;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(5px);
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+            z-index: 1001;
+            display: none;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+        }
+
+        #response-form-container input,
+        #response-form-container textarea {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 8px 0 12px;
+            border: 1px solid #555;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 16px;
+        }
+
+        #response-form-container textarea {
+            height: 80px;
+            resize: none;
+        }
+
+        #response-form-container button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            font-size: 16px;
+        }
+
+        #response-form-container h3 {
+            margin-top: 0;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        #response-status {
+            margin-top: 12px;
+            text-align: center;
+            font-weight: bold;
+            min-height: 20px;
+        }
+
+        #instructions {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(3px);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 16px;
+            z-index: 1000;
+            max-width: 80%;
+        }
+
+        #permission-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 4000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            padding: 20px;
+        }
+
+        #permission-overlay h2 {
+            font-weight: 700;
+        }
+
+        #permission-btn {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        #debug-info {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #0f0;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 11px;
+            font-family: monospace;
+            z-index: 2500;
+            display: none;
+            width: calc(100% - 40px);
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .location-info-style {
+            position: fixed;
+            bottom: 100px;
             left: 10px;
             color: white;
             background: rgba(0, 0, 0, 0.6);
@@ -123,32 +327,29 @@
     <div id="loading">
         <h1>Why can't...?</h1>
         <p>Initializing garden experience...</p>
+        <p style="font-size: 0.8em; margin-top: 20px;">(Ensure you allow Camera and Location access and are using HTTPS)
+        </p>
     </div>
 
     <div class="arjs-loader-display">
-        <p>Loading AR, please wait and grant permissions...</p>
+        <p>Starting AR... Requesting permissions...</p>
     </div>
-    
+
     <div id="permission-overlay">
-         <h2>Permissions Required</h2>
-         <p>This AR experience needs access to your camera and location.</p>
-         <button id="permission-btn">Allow Access</button>
+        <h2>Permissions Required</h2>
+        <p>This AR experience needs access to device motion sensors.</p>
+        <button id="permission-btn">Allow Motion Sensors</button>
     </div>
 
     <div id="main-message-display" class="message-container-style" style="display: none;">
         <p>Why can't this be a community garden?</p>
     </div>
-    <div id="dynamic-response-text-display" class="dynamic-response-display-style">
-        </div>
-
-
+    <div id="dynamic-response-text-display" class="dynamic-response-display-style"></div>
     <div id="instructions">Point your camera around. The garden will appear if you are near the location.</div>
-    
     <div class="controls">
         <button id="response-toggle" class="btn" title="Share Thoughts">+</button>
         <button id="reset-btn" class="btn" title="Hide Garden">↺</button>
     </div>
-
     <div id="response-form-container">
         <h3>Share Your Thoughts</h3>
         <form id="garden-response-form-actual">
@@ -160,96 +361,94 @@
         </form>
         <div id="response-status"></div>
     </div>
-
     <div id="debug-info"></div>
 
-    <a-scene
-        id="ar-scene"
-        vr-mode-ui="enabled: false"
-        embedded
-        renderer="logarithmicDepthBuffer: true; colorManagement: true; physicallyCorrectLights: true;"
-        arjs="
+    <a-scene id="ar-scene" vr-mode-ui="enabled: false" embedded
+        renderer="logarithmicDepthBuffer: true; colorManagement: true; physicallyCorrectLights: true;" arjs="
             sourceType: webcam;
+            trackingMethod: best; 
             debugUIEnabled: false;
             detectionMode: mono_and_matrix;
             matrixCodeType: 3x3;
             sourceWidth: 1280; sourceHeight: 960;
             displayWidth: 1280; displayHeight: 960;"
-        location-check="targetLat: 35.996417; targetLon: -78.909944; threshold: 50; debugElement: #debug-info"
+        location-check="targetLat: 35.996479; targetLon: -78.909951; threshold: 50; debugElement: #debug-info"
         loading-screen-manager>
 
-        <a-entity id="gps-garden"
-            gps-projected-entity-place="latitude: 35.996417; longitude: -78.909944;" /* REPLACE WITH YOUR TARGET COORDS */
-            visible="false" 
-            styled-flower-garden="flowerCount: 150; radius: 10;"> 
-            </a-entity>
+        <a-entity id="gps-garden" gps-projected-entity-place="latitude: 35.996417; longitude: -78.909944;" /* REPLACE
+            WITH YOUR TARGET COORDS */ visible="false" styled-flower-garden="flowerCount: 150; radius: 10;">
+        </a-entity>
 
-        <a-camera gps-projected-camera="simulateLatitude: 35.996417; simulateLongitude: -78.909944; gpsMinDistance: 5; gpsTimeInterval: 1000" rotation-reader></a-camera>
+        <a-camera gps-new-camera="gpsMinDistance: 5; gpsTimeInterval: 1000" rotation-reader></a-camera>
     </a-scene>
 
     <script>
-        // Helper functions for distance calculation (from Why Can't index.html)
+        // Helper functions for distance calculation (remain the same)
         function toRadians(degrees) { return degrees * Math.PI / 180; }
         function toDegrees(radians) { return radians * 180 / Math.PI; }
         function calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371e3; // Earth's radius in meters
             const φ1 = toRadians(lat1); const φ2 = toRadians(lat2);
             const Δφ = toRadians(lat2 - lat1); const Δλ = toRadians(lon2 - lon1);
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
             return R * c; // Distance in meters
         }
 
-        // Component to manage loading screen based on AR.js events
+        // Loading Screen Manager Component (remains the same)
         AFRAME.registerComponent('loading-screen-manager', {
             init: function () {
                 const loadingScreen = document.getElementById('loading');
-                const arjsLoaderDisplay = document.querySelector('.arjs-loader-display'); // AR.js's own
-                
-                // Initially hide AR.js loader, use our custom one.
-                if(arjsLoaderDisplay) arjsLoaderDisplay.style.display = 'none';
+                const arjsLoaderDisplay = document.querySelector('.arjs-loader-display');
 
+                if (arjsLoaderDisplay) arjsLoaderDisplay.style.display = 'none'; // Hide AR.js default initially
 
                 this.el.sceneEl.addEventListener('arjs-video-loaded', () => {
                     console.log('AR.js video loaded');
+                    // Sometimes good to hide loading here if GPS isn't needed immediately
+                    if (loadingScreen && loadingScreen.style.display !== 'none') {
+                        // loadingScreen.style.display = 'none'; // Uncomment if preferred
+                        // console.log('Main loading screen hidden on video load.');
+                    }
                 });
                 this.el.sceneEl.addEventListener('arjs-gps-camera-loading', () => {
                     console.log('AR.js GPS Camera loading');
-                    if(loadingScreen) loadingScreen.style.display = 'flex';
+                    if (loadingScreen) loadingScreen.style.display = 'flex'; // Ensure loading is visible
                 });
-                this.el.sceneEl.addEventListener('gps-camera-update-position', () => {
-                    console.log('AR.js GPS Camera position UPDATE');
-                     // This is a good point to hide the main loading screen
+                // UPDATE: Listen to gps-camera-origin-coord-set for location init confirmation
+                this.el.sceneEl.addEventListener('gps-camera-origin-coord-set', () => {
+                    console.log('AR.js GPS Camera origin coordinates SET');
                     if (loadingScreen && loadingScreen.style.display !== 'none') {
                         loadingScreen.style.display = 'none';
                         console.log('Main loading screen hidden.');
                     }
                 });
-
-                // Fallback to hide loading screen
+                // Fallback - keep timeout
                 setTimeout(() => {
                     if (loadingScreen && loadingScreen.style.display !== 'none') {
                         loadingScreen.style.display = 'none';
                         console.log('Main loading screen hidden by timeout.');
                     }
-                }, 8000); // Increased timeout
+                }, 10000); // Extended timeout slightly
             }
         });
 
 
-        // A-Frame Component for Styled Flower Garden (from index.html logic)
+        // Styled Flower Garden Component (UPDATED TO USE AFRAME.THREE)
         AFRAME.registerComponent('styled-flower-garden', {
             schema: {
                 flowerCount: { type: 'number', default: 100 },
-                radius: { type: 'number', default: 15 }, // Spread radius
-                minHeight: {type: 'number', default: -1.0},
-                maxHeight: {type: 'number', default: 0.5}
+                radius: { type: 'number', default: 15 },
+                minHeight: { type: 'number', default: -1.0 },
+                maxHeight: { type: 'number', default: 0.5 }
             },
 
             init: function () {
+                // Use AFRAME.THREE namespace
+                this.THREE = AFRAME.THREE;
                 this.sceneEl = this.el.sceneEl;
-                this.camera = this.sceneEl.camera; // A-Frame camera
-                this.clock = new AFRAME.THREE.Clock();
+                this.camera = this.sceneEl.camera;
+                this.clock = new this.THREE.Clock();
 
                 this.MAX_FLOWERS = this.data.flowerCount;
                 this.currentFlowerCount = 0;
@@ -259,57 +458,88 @@
                 this.instanceStemGrowDuration = new Float32Array(this.MAX_FLOWERS);
                 this.instanceFlowerGrowDuration = new Float32Array(this.MAX_FLOWERS);
                 this.instanceIsBlooming = new Array(this.MAX_FLOWERS).fill(false);
-                this.dummy = new AFRAME.THREE.Object3D();
+                this.dummy = new this.THREE.Object3D();
 
                 this.initFlowers();
-                
-                // Add main text as part of this component if desired
+
+                // Add text using A-Frame entity
                 const textEl = document.createElement('a-text');
                 textEl.setAttribute('value', "Why can't this be a community garden?");
                 textEl.setAttribute('align', 'center');
                 textEl.setAttribute('color', '#FFF');
-                textEl.setAttribute('width', '6'); // Adjust width as needed
-                textEl.setAttribute('position', `0 ${this.data.maxHeight + 1.0} 0`); // Position above flowers
-                textEl.setAttribute('look-at', '[gps-projected-camera]');
-                this.el.appendChild(textEl); // Add to this component's entity
+                textEl.setAttribute('width', '6');
+                textEl.setAttribute('position', `0 ${this.data.maxHeight + 1.0} 0`);
+                textEl.setAttribute('look-at', '[gps-new-camera]'); // UPDATE look-at target
+                this.el.appendChild(textEl);
 
+                // Add the InstancedMesh once the entity's object3D is ready
                 this.el.addEventListener('object3dset', () => {
-                     if (this.el.object3D && this.instancedFlowers) {
+                    if (this.el.object3D && this.instancedFlowers) {
                         this.el.object3D.add(this.instancedFlowers);
                         console.log('Styled Flower Garden: InstancedMesh added to A-Frame entity.');
-                        this.placeFlowers(); // Place flowers once object3D is ready
+                        // Place flowers only when the component/entity becomes visible
+                        if (this.el.getAttribute('visible')) {
+                            this.placeFlowers();
+                        }
+                    }
+                });
+
+                // Handle visibility change to place/reset flowers
+                this.el.addEventListener('componentchanged', (evt) => {
+                    if (evt.detail.name === 'visible') {
+                        if (evt.detail.newData === true && this.instancedFlowers) {
+                            console.log('Styled Flower Garden: Became visible, placing flowers.');
+                            this.placeFlowers();
+                        } else if (evt.detail.newData === false && this.instancedFlowers) {
+                            console.log('Styled Flower Garden: Became hidden, resetting flowers.');
+                            this.resetFlowers();
+                        }
                     }
                 });
             },
 
             initFlowers: function () {
-                const baseFlowerGeometry = new AFRAME.THREE.PlaneGeometry(1.8, 1.8);
-                const baseFlowerMaterial = new AFRAME.THREE.ShaderMaterial({
+                const baseFlowerGeometry = new this.THREE.PlaneGeometry(1.8, 1.8);
+                const baseFlowerMaterial = new this.THREE.ShaderMaterial({
                     uniforms: { u_time: { value: 0.0 } },
                     vertexShader: document.getElementById('flowerVertexShader').textContent,
                     fragmentShader: document.getElementById('flowerFragmentShader').textContent,
                     transparent: true,
-                    side: AFRAME.THREE.DoubleSide,
+                    side: this.THREE.DoubleSide,
                     depthWrite: false
                 });
 
-                this.instancedFlowers = new AFRAME.THREE.InstancedMesh(baseFlowerGeometry, baseFlowerMaterial, this.MAX_FLOWERS);
-                this.instancedFlowers.instanceMatrix.setUsage(AFRAME.THREE.DynamicDrawUsage);
-                this.instancedFlowers.geometry.setAttribute('instanceRandomVec2', new AFRAME.THREE.InstancedBufferAttribute(this.instanceRandomVec2s, 2));
-                this.instancedFlowers.geometry.setAttribute('instanceStemGrowTime', new AFRAME.THREE.InstancedBufferAttribute(this.instanceStemGrowTimes, 1));
-                this.instancedFlowers.geometry.setAttribute('instanceFlowerGrowTime', new AFRAME.THREE.InstancedBufferAttribute(this.instanceFlowerGrowTimes, 1));
+                this.instancedFlowers = new this.THREE.InstancedMesh(baseFlowerGeometry, baseFlowerMaterial, this.MAX_FLOWERS);
+                this.instancedFlowers.instanceMatrix.setUsage(this.THREE.DynamicDrawUsage); // Use THREE namespace
+                this.instancedFlowers.geometry.setAttribute('instanceRandomVec2', new this.THREE.InstancedBufferAttribute(this.instanceRandomVec2s, 2));
+                this.instancedFlowers.geometry.setAttribute('instanceStemGrowTime', new this.THREE.InstancedBufferAttribute(this.instanceStemGrowTimes, 1));
+                this.instancedFlowers.geometry.setAttribute('instanceFlowerGrowTime', new this.THREE.InstancedBufferAttribute(this.instanceFlowerGrowTimes, 1));
                 this.instancedFlowers.count = 0;
-                // The mesh will be added to this.el.object3D once it's available (see 'object3dset' listener)
+                // Mesh added via 'object3dset' listener
             },
 
             placeFlowers: function () {
-                if (!this.instancedFlowers) {
-                    console.error("placeFlowers: InstancedMesh not ready."); return;
+                if (!this.instancedFlowers || !this.el.object3D) { // Check if object3D is ready
+                    console.warn("placeFlowers: InstancedMesh or entity object3D not ready yet.");
+                    // Attempt to add mesh again if not already added
+                    if (this.el.object3D && this.instancedFlowers && !this.instancedFlowers.parent) {
+                        this.el.object3D.add(this.instancedFlowers);
+                    }
+                    // Optionally retry placement after a short delay if initialization races occur
+                    // setTimeout(() => { this.placeFlowers(); }, 100); 
+                    return;
                 }
+                if (this.currentFlowerCount > 0) {
+                    console.log("placeFlowers: Flowers already seem placed or count > 0. Resetting first.");
+                    this.resetFlowers(); // Ensure clean state before placing
+                }
+
                 const flowerCount = this.MAX_FLOWERS;
                 const radius = this.data.radius;
                 const minHeight = this.data.minHeight;
                 const maxHeight = this.data.maxHeight;
+
+                console.log(`placeFlowers: Attempting to place ${flowerCount} flowers.`);
 
                 this.instanceIsBlooming.fill(false);
                 this.instanceStemGrowTimes.fill(0);
@@ -317,18 +547,16 @@
                 this.instanceRandomVec2s.fill(0);
                 this.instanceStemGrowDuration.fill(0);
                 this.instanceFlowerGrowDuration.fill(0);
-                this.currentFlowerCount = flowerCount;
 
-                for (let i = 0; i < this.currentFlowerCount; i++) {
+                for (let i = 0; i < flowerCount; i++) {
                     const angle = Math.random() * Math.PI * 2;
-                    const distance = Math.random() * radius; // Flowers spread from center up to radius
+                    const distance = Math.random() * radius;
                     const x = Math.cos(angle) * distance;
                     const z = Math.sin(angle) * distance;
-                    // Y position relative to the gps-projected-entity-place
                     const y = minHeight + Math.random() * (maxHeight - minHeight);
 
                     this.dummy.position.set(x, y, z);
-                    this.dummy.rotation.set(0, Math.random() * Math.PI * 2, 0); // Initial random rotation
+                    this.dummy.rotation.set(0, Math.random() * Math.PI * 2, 0);
                     const scaleVariation = 0.6 + Math.random() * 0.8;
                     this.dummy.scale.set(scaleVariation, scaleVariation, scaleVariation);
                     this.dummy.updateMatrix();
@@ -340,23 +568,23 @@
                     this.instanceFlowerGrowTimes[i] = 0.0;
                     this.instanceStemGrowDuration[i] = 1.0;
                     this.instanceFlowerGrowDuration[i] = 2.0;
-                    
-                    // Stagger blooming
-                    setTimeout(() => { this.instanceIsBlooming[i] = true; }, 200 + Math.random() * 3000);
+
+                    setTimeout(() => { if (this.instanceIsBlooming) this.instanceIsBlooming[i] = true; }, 200 + Math.random() * 3000);
                 }
                 this.instancedFlowers.instanceMatrix.needsUpdate = true;
                 if (this.instancedFlowers.geometry.attributes.instanceRandomVec2) this.instancedFlowers.geometry.attributes.instanceRandomVec2.needsUpdate = true;
                 if (this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true;
                 if (this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
-                this.instancedFlowers.count = this.currentFlowerCount;
+                this.instancedFlowers.count = flowerCount; // Set count AFTER loop
+                this.currentFlowerCount = flowerCount; // Update internal count
                 console.log(`Styled Flower Garden: Placed ${this.currentFlowerCount} flowers.`);
             },
-            
-            resetFlowers: function() {
+
+            resetFlowers: function () {
                 if (this.instancedFlowers) {
                     this.instancedFlowers.count = 0;
                     if (this.instancedFlowers.instanceMatrix) this.instancedFlowers.instanceMatrix.needsUpdate = true;
-                    this.instanceIsBlooming.fill(false);
+                    this.instanceIsBlooming.fill(false); // Reset blooming state array
                     this.instanceStemGrowTimes.fill(0);
                     this.instanceFlowerGrowTimes.fill(0);
                     this.currentFlowerCount = 0;
@@ -365,9 +593,9 @@
             },
 
             tick: function (time, deltaTime) {
-                if (!this.instancedFlowers || this.instancedFlowers.count === 0 || !this.el.getAttribute('visible')) return;
+                if (!this.instancedFlowers || this.currentFlowerCount === 0 || !this.el.getAttribute('visible')) return; // Use currentFlowerCount
 
-                const dt = deltaTime / 1000; // Convert ms to s
+                const dt = deltaTime / 1000;
                 const elapsedTime = this.clock.getElapsedTime();
 
                 if (this.instancedFlowers.material.uniforms.u_time) {
@@ -376,9 +604,10 @@
 
                 let needsStemTimeUpdate = false;
                 let needsFlowerTimeUpdate = false;
+                let needsMatrixUpdate = false; // Flag for billboarding changes
 
-                for (let i = 0; i < this.instancedFlowers.count; i++) {
-                    if (this.instanceIsBlooming[i]) {
+                for (let i = 0; i < this.currentFlowerCount; i++) { // Use currentFlowerCount
+                    if (this.instanceIsBlooming && this.instanceIsBlooming[i]) { // Check if array exists
                         let currentStemTime = this.instanceStemGrowTimes[i];
                         let currentFlowerTime = this.instanceFlowerGrowTimes[i];
                         const stemDuration = this.instanceStemGrowDuration[i];
@@ -386,11 +615,11 @@
 
                         if (currentStemTime < stemDuration) {
                             currentStemTime += dt;
-                            if(this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.setX(i, currentStemTime);
+                            if (this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.setX(i, currentStemTime);
                             needsStemTimeUpdate = true;
                         } else if (currentFlowerTime < flowerDuration) {
                             currentFlowerTime += dt;
-                             if(this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.setX(i, currentFlowerTime);
+                            if (this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.setX(i, currentFlowerTime);
                             needsFlowerTimeUpdate = true;
                         }
                         this.instanceStemGrowTimes[i] = currentStemTime;
@@ -400,40 +629,54 @@
 
                 if (needsStemTimeUpdate && this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true;
                 if (needsFlowerTimeUpdate && this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
-                
-                // Billboarding flowers
-                if (this.camera && this.camera.el && this.camera.el.object3D) {
-                    const camWorldPos = new AFRAME.THREE.Vector3();
-                    this.camera.el.object3D.getWorldPosition(camWorldPos);
 
-                    for (let i = 0; i < this.instancedFlowers.count; i++) {
-                        this.instancedFlowers.getMatrixAt(i, this.dummy.matrix);
-                        this.dummy.matrix.decompose(this.dummy.position, this.dummy.quaternion, this.dummy.scale);
-                        
-                        // Convert flower local position to world position relative to the gps-garden entity
-                        const flowerWorldPos = this.el.object3D.localToWorld(this.dummy.position.clone());
-                        
-                        this.dummy.position.copy(flowerWorldPos); // Set dummy to world for lookAt
+                // Billboarding logic
+                if (this.camera && this.camera.el && this.camera.el.object3D && this.el.object3D) {
+                    const camWorldPos = new this.THREE.Vector3();
+                    this.camera.el.object3D.getWorldPosition(camWorldPos); // Get camera world position
+
+                    const parentWorldMatrix = this.el.object3D.matrixWorld;
+                    const parentInverseWorldMatrix = new this.THREE.Matrix4().copy(parentWorldMatrix).invert();
+
+                    for (let i = 0; i < this.currentFlowerCount; i++) { // Use currentFlowerCount
+                        this.instancedFlowers.getMatrixAt(i, this.dummy.matrix); // Get current local matrix
+
+                        // Decompose local matrix to get local position
+                        const localPos = new this.THREE.Vector3();
+                        const localQuat = new this.THREE.Quaternion(); // Store original quaternion if needed
+                        const localScale = new this.THREE.Vector3();
+                        this.dummy.matrix.decompose(localPos, localQuat, localScale);
+
+                        // Calculate world position of the instance
+                        const instanceWorldPos = localPos.clone().applyMatrix4(parentWorldMatrix);
+
+                        // Calculate lookAt matrix in world space
+                        this.dummy.position.copy(instanceWorldPos);
+                        this.dummy.scale.copy(localScale); // Keep original scale
                         this.dummy.lookAt(camWorldPos);
-                        
-                        // Convert back to local matrix for instanced mesh
-                        this.dummy.updateMatrix();
-                        this.el.object3D.worldToLocal(this.dummy.matrix); // Convert matrix to be local to parent
-                        
+                        this.dummy.updateMatrixWorld(true); // Force update world matrix after lookAt
+
+                        // Convert the world matrix back to local space relative to the parent entity
+                        this.dummy.matrix.premultiply(parentInverseWorldMatrix);
+
+                        // Set the updated local matrix
                         this.instancedFlowers.setMatrixAt(i, this.dummy.matrix);
+                        needsMatrixUpdate = true;
                     }
-                    this.instancedFlowers.instanceMatrix.needsUpdate = true;
+                    if (needsMatrixUpdate) {
+                        this.instancedFlowers.instanceMatrix.needsUpdate = true;
+                    }
                 }
             }
         });
 
-        // Location Proximity Checker (adapted from Why Can't index.html)
+        // Location Proximity Checker (UPDATED TO LISTEN for gps-new-camera)
         AFRAME.registerComponent('location-check', {
             schema: {
                 targetLat: { type: 'number', default: 0 },
                 targetLon: { type: 'number', default: 0 },
-                threshold: { type: 'number', default: 50 }, // meters
-                debugElement: {type: 'selector'}
+                threshold: { type: 'number', default: 50 },
+                debugElement: { type: 'selector' }
             },
             init: function () {
                 this.gardenEntity = document.getElementById('gps-garden');
@@ -442,19 +685,22 @@
                 this.responseToggleBtn = document.getElementById('response-toggle');
                 this.resetBtn = document.getElementById('reset-btn');
                 this.instructionsDiv = document.getElementById('instructions');
-
+                this.hasEnteredRange = false; // Track if user has entered the range
 
                 if (!this.gardenEntity) {
-                    console.error("Location Check: gps-garden entity not found!");
-                    return;
+                    console.error("Location Check: gps-garden entity not found!"); return;
                 }
-                
                 this.debugEl = this.data.debugElement;
-                if (this.debugEl) this.debugEl.style.display = 'block'; // Show debug if present
+                if (this.debugEl) this.debugEl.style.display = 'block';
 
                 console.log(`Location Check Initialized: Target ${this.data.targetLat}, ${this.data.targetLon}, Threshold: ${this.data.threshold}m`);
 
+                // UPDATE: Listen to gps-new-camera update event
                 window.addEventListener('gps-camera-update-position', (event) => {
+                    if (!event.detail || !event.detail.position) {
+                        console.warn('Location Check: gps-camera-update-position event missing details.');
+                        return;
+                    }
                     const currentLat = event.detail.position.latitude;
                     const currentLon = event.detail.position.longitude;
                     const distance = calculateDistance(currentLat, currentLon, this.data.targetLat, this.data.targetLon);
@@ -464,42 +710,39 @@
                     }
 
                     if (distance < this.data.threshold) {
-                        if (!this.gardenEntity.getAttribute('visible')) {
-                            this.gardenEntity.setAttribute('visible', true);
-                            const flowerComponent = this.gardenEntity.components['styled-flower-garden'];
-                            if (flowerComponent) flowerComponent.placeFlowers(); // Re-place/show flowers
-                            
-                            if(this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'block';
-                            if(this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'block'; // Or trigger response loading
-                            if(this.responseToggleBtn) this.responseToggleBtn.style.display = 'flex';
-                            if(this.resetBtn) this.resetBtn.style.display = 'flex';
-                            if(this.instructionsDiv) this.instructionsDiv.style.display = 'none';
-                             loadAndCycleResponses(true); // Load/start cycling server responses
+                        if (!this.hasEnteredRange) { // Only trigger on first entry
+                            this.hasEnteredRange = true;
+                            this.gardenEntity.setAttribute('visible', true); // Visibility change triggers flower placement via listener
+                            if (this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'block';
+                            if (this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'block';
+                            if (this.responseToggleBtn) this.responseToggleBtn.style.display = 'flex';
+                            if (this.resetBtn) this.resetBtn.style.display = 'flex';
+                            if (this.instructionsDiv) this.instructionsDiv.style.display = 'none';
+                            loadAndCycleResponses(true);
                             console.log("Location Check: User IN RANGE. Garden visible.");
                         }
                     } else {
-                        if (this.gardenEntity.getAttribute('visible')) {
-                            this.gardenEntity.setAttribute('visible', false);
-                             const flowerComponent = this.gardenEntity.components['styled-flower-garden'];
-                            if (flowerComponent) flowerComponent.resetFlowers(); 
-
-                            if(this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'none';
-                            if(this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'none';
-                            if(this.responseToggleBtn) this.responseToggleBtn.style.display = 'none';
-                            if(this.resetBtn) this.resetBtn.style.display = 'none';
+                        if (this.hasEnteredRange) { // Only trigger on first exit
+                            this.hasEnteredRange = false;
+                            this.gardenEntity.setAttribute('visible', false); // Visibility change triggers flower reset via listener
+                            if (this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'none';
+                            if (this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'none';
+                            if (this.responseToggleBtn) this.responseToggleBtn.style.display = 'none';
+                            if (this.resetBtn) this.resetBtn.style.display = 'none';
                             const responseForm = document.getElementById('response-form-container');
-                            if(responseForm) responseForm.style.display = 'none';
-                            if(this.responseToggleBtn) this.responseToggleBtn.textContent = '+';
-                            if(this.instructionsDiv) this.instructionsDiv.style.display = 'block';
+                            if (responseForm) responseForm.style.display = 'none';
+                            if (this.responseToggleBtn) this.responseToggleBtn.textContent = '+';
+                            if (this.instructionsDiv) this.instructionsDiv.style.display = 'block';
                             console.log("Location Check: User OUT OF RANGE. Garden hidden.");
                         }
                     }
                 });
             }
         });
-        
+
         // --- Global UI Event Listeners & Functions ---
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
+            // ... (Event listeners for buttons and form submission remain largely the same) ...
             const responseToggleBtn = document.getElementById('response-toggle');
             const responseFormContainer = document.getElementById('response-form-container');
             const gardenResponseForm = document.getElementById('garden-response-form-actual');
@@ -520,24 +763,24 @@
             }
 
             if (resetBtn && gardenEntity) {
-                resetBtn.addEventListener('click', function() {
-                    gardenEntity.setAttribute('visible', false); // Hide the garden
-                    const flowerComponent = gardenEntity.components['styled-flower-garden'];
-                    if (flowerComponent) flowerComponent.resetFlowers();
-                    
-                    if(mainMessageDisplay) mainMessageDisplay.style.display = 'none';
-                    if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none';
-                    if(responseToggleBtn) responseToggleBtn.style.display = 'none';
-                    if(responseFormContainer) responseFormContainer.style.display = 'none';
-                    if(responseToggleBtn) responseToggleBtn.textContent = '+';
-                    if(resetBtn) resetBtn.style.display = 'none'; // Hide reset itself after reset
-                    if(instructionsDiv) instructionsDiv.style.display = 'block'; // Show instructions again
+                resetBtn.addEventListener('click', function () {
+                    // Reset button just explicitly hides things now, location check handles re-showing
+                    gardenEntity.setAttribute('visible', false); // Hide the garden (triggers flower reset)                    
+                    if (mainMessageDisplay) mainMessageDisplay.style.display = 'none';
+                    if (dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none';
+                    if (responseToggleBtn) responseToggleBtn.style.display = 'none';
+                    if (responseFormContainer) responseFormContainer.style.display = 'none';
+                    if (responseToggleBtn) responseToggleBtn.textContent = '+';
+                    if (resetBtn) resetBtn.style.display = 'none';
+                    if (instructionsDiv) instructionsDiv.style.display = 'block';
+                    const locationCheck = document.querySelector('[location-check]').components['location-check'];
+                    if (locationCheck) locationCheck.hasEnteredRange = false; // Allow re-entry detection
                     console.log("Reset Button: Garden hidden by user.");
                 });
             }
 
             if (gardenResponseForm && responseStatusDiv) {
-                gardenResponseForm.addEventListener('submit', function(e) {
+                gardenResponseForm.addEventListener('submit', function (e) {
                     e.preventDefault();
                     const name = gardenResponseForm.name.value;
                     const message = gardenResponseForm.message.value;
@@ -551,24 +794,23 @@
                     responseStatusDiv.textContent = 'Submitting...';
                     responseStatusDiv.style.color = 'white';
 
-                    // REPLACE WITH YOUR GOOGLE APPS SCRIPT URL for form submission
-                    const scriptURL = 'https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID_HERE/exec'; 
+                    const scriptURL = 'YOUR_APPS_SCRIPT_ID_HERE'; // <<< REPLACE
                     const formData = new FormData();
                     formData.append('name', name);
                     formData.append('message', message);
                     formData.append('timestamp', timestamp);
-                    formData.append('action', 'submitResponse'); // Assuming your script handles actions
+                    formData.append('action', 'submitResponse');
 
-                    fetch(scriptURL, { method: 'POST', body: formData, mode: 'no-cors' }) // no-cors for simple sheet append
+                    fetch(scriptURL, { method: 'POST', body: formData, mode: 'no-cors' })
                         .then(() => {
                             responseStatusDiv.textContent = 'Thank you for sharing!';
                             responseStatusDiv.style.color = '#4CAF50';
                             gardenResponseForm.reset();
-                            setTimeout(() => { 
-                                if(responseFormContainer) responseFormContainer.style.display = 'none';
-                                if(responseToggleBtn) responseToggleBtn.textContent = '+';
-                             }, 2000);
-                             loadAndCycleResponses(false); // Reload responses to include the new one
+                            setTimeout(() => {
+                                if (responseFormContainer) responseFormContainer.style.display = 'none';
+                                if (responseToggleBtn) responseToggleBtn.textContent = '+';
+                            }, 2000);
+                            loadAndCycleResponses(false); // Reload responses
                         })
                         .catch(error => {
                             console.error('Error submitting response:', error);
@@ -577,60 +819,57 @@
                         });
                 });
             }
-            
-            // Handle permission button for iOS-like motion/camera access if needed before AR.js
+
+            // iOS Motion Sensor Permission Handling (remain the same)
             const permissionOverlay = document.getElementById('permission-overlay');
             const permissionBtn = document.getElementById('permission-btn');
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
             if (isIOS && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                if(permissionOverlay) permissionOverlay.style.display = 'flex';
-                if(permissionBtn) permissionBtn.addEventListener('click', function() {
+                if (permissionOverlay) permissionOverlay.style.display = 'flex';
+                if (permissionBtn) permissionBtn.addEventListener('click', function () {
                     DeviceMotionEvent.requestPermission().then(response => {
                         if (response === 'granted') {
-                            if(typeof DeviceOrientationEvent.requestPermission === 'function') {
+                            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
                                 DeviceOrientationEvent.requestPermission().then(orientationResponse => {
                                     if (orientationResponse === 'granted') {
-                                        if(permissionOverlay) permissionOverlay.style.display = 'none';
-                                        // Permissions granted, AR.js should take over
+                                        if (permissionOverlay) permissionOverlay.style.display = 'none';
                                     } else { alert('Device orientation permission denied.'); }
                                 });
                             } else {
-                                if(permissionOverlay) permissionOverlay.style.display = 'none';
+                                if (permissionOverlay) permissionOverlay.style.display = 'none';
                             }
                         } else { alert('Device motion permission denied.'); }
                     }).catch(console.error);
                 }, { once: true });
             } else {
-                 if(permissionOverlay) permissionOverlay.style.display = 'none'; // Not iOS or permission not needed this way
+                if (permissionOverlay) permissionOverlay.style.display = 'none';
             }
         });
-        
-        // --- Dynamic Server Responses Logic ---
+
+        // Dynamic Server Responses Logic (remains the same)
         let serverResponses = [];
         let currentResponseIndex = -1;
         let responseIntervalId = null;
         const dynamicResponseTextDisplay = document.getElementById('dynamic-response-text-display');
 
         function loadAndCycleResponses(isInitialCall = false) {
-            // REPLACE WITH YOUR GOOGLE APPS SCRIPT URL for fetching responses
-            const fetchScriptURL = 'https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID_HERE/exec?action=getResponses'; 
-            
-            // Default/placeholder responses
+            const fetchScriptURL = 'YOUR_APPS_SCRIPT_ID_HERE'; // <<< REPLACE 
             const defaultResponses = [
-                { name: "Gardener", message: "Seeds of hope grow here." }, 
+                { name: "Gardener", message: "Seeds of hope grow here." },
                 { name: "Neighbor", message: "What a beautiful idea!" },
                 { name: "Visitor", message: "This space has potential." }
             ];
 
             fetch(fetchScriptURL)
+                // ... fetch logic remains the same ...
                 .then(response => {
                     if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
                     return response.json();
                 })
                 .then(data => {
                     if (data.result === 'success' && data.responses && data.responses.length > 0) {
-                        serverResponses = data.responses.map(r => ({ name: r.name || "Anonymous", message: r.message || ""}));
+                        serverResponses = data.responses.map(r => ({ name: r.name || "Anonymous", message: r.message || "" }));
                         console.log(`Loaded ${serverResponses.length} responses from server.`);
                     } else {
                         serverResponses = defaultResponses;
@@ -643,29 +882,29 @@
                 })
                 .finally(() => {
                     if (serverResponses.length > 0) {
-                        if (responseIntervalId) clearInterval(responseIntervalId); // Clear existing interval
-                        if(isInitialCall) showNextResponse(); // Show first immediately
-                        responseIntervalId = setInterval(showNextResponse, 10000); // Cycle every 10s
-                        if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'block';
+                        if (responseIntervalId) clearInterval(responseIntervalId);
+                        if (isInitialCall) showNextResponse();
+                        responseIntervalId = setInterval(showNextResponse, 10000);
+                        if (dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'block';
                     } else {
-                        if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none';
+                        if (dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none';
                     }
                 });
         }
 
         function showNextResponse() {
+            // ... showNextResponse logic remains the same ...
             if (!serverResponses || serverResponses.length === 0 || !dynamicResponseTextDisplay) return;
-            
+
             currentResponseIndex = (currentResponseIndex + 1) % serverResponses.length;
             const response = serverResponses[currentResponseIndex];
-            
+
             dynamicResponseTextDisplay.textContent = `"${response.message}" - ${response.name}`;
             dynamicResponseTextDisplay.style.opacity = 0;
-            // Simple fade-in
             setTimeout(() => { dynamicResponseTextDisplay.style.opacity = 1; }, 100);
         }
 
-
     </script>
 </body>
+
 </html>
