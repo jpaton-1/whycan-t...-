@@ -2,681 +2,670 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Community Garden AR</title>
-    
-    <!-- A-Frame and AR.js with location-based support -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Why can't this be a community garden? (Location Based)</title>
+
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-locations-only.js"></script>
-    
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r132/three.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gwendolyn:wght@700&family=Roboto:wght@400;700&display=swap"
+        rel="stylesheet">
+
     <style>
-        .arjs-loader {
-            position: fixed;
-            z-index: 999;
-            overflow: show;
-            margin: auto;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
+        /* Styles from index.html - prioritized */
+        body { margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; overflow: hidden; background-color: #000; }
+        #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 3000; text-align: center; padding: 20px; box-sizing: border-box; }
+        #loading h1 { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 2.5em; margin-bottom: 15px; }
+        #loading p { font-size: 1.1em; margin-bottom: 20px;}
         
-        .arjs-loader div {
-            text-align: center;
-            color: white;
-            max-width: 80%;
-            font-family: Arial, Helvetica, sans-serif;
+        /* AR.js Loader specific style - can be customized or merged with #loading */
+        .arjs-loader-display { position: fixed; z-index: 9999; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; justify-content: center; align-items: center; text-align: center; color: white; font-family: 'Roboto', sans-serif;}
+        .arjs-loader-display p { font-size: 1.2em; padding: 0 20px;}
+
+        /* #camera-feed is managed by AR.js, so direct styling might not be needed or might conflict */
+        /* #canvas-container & #css2d-container are also managed by A-Frame/Three.js within A-Frame context */
+
+        /* Message text within the AR scene (will be an a-text) - this style is for the original HTML version */
+        /* For A-Frame, we'd style <a-text> directly or the HTML elements used for overlays */
+        .message-container-style { /* This class can be applied to an overlay div if needed */
+            color: white; background: none; padding: 5px; text-align: center; 
+            font-family: 'Gwendolyn', cursive; font-weight: 700; font-size: 8vw; /* Adjusted for potential overlay */
+            line-height: 1.1; pointer-events: none; /* none if just display, auto if interactive overlay */
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.7), 2px 2px 5px rgba(0,0,0,0.5); 
+            white-space: normal; max-width: 90%; box-sizing: border-box;
+            position: fixed; top: 10%; left: 50%; transform: translateX(-50%); z-index: 100;
         }
+
+        .dynamic-response-display-style { /* This class can be applied to an overlay div for responses */
+            color: #C8FFC5; background-color: rgba(0, 0, 0, 0.65); padding: 8px 12px; 
+            border-radius: 8px; text-align: center; font-family: 'Roboto', sans-serif;
+            font-size: 15px; font-weight: 400; pointer-events: auto; max-width: 250px; 
+            box-sizing: border-box; text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+            position: fixed; /* Example positioning, manage dynamically for AR effect */
+            bottom: 150px; left: 50%; transform: translateX(-50%);
+            z-index: 100; display: none; /* Controlled by script */
+        }
+
+        .controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: space-around; padding: 0 20px; box-sizing: border-box; z-index: 1000; }
+        .btn { width: 60px; height: 60px; border-radius: 50%; color: white; border: none; font-family: 'Roboto', sans-serif; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; }
         
-        .location-info {
+        /* Button IDs might change or be re-purposed */
+        #place-btn { background-color: #4CAF50; /* May not be used if garden appears automatically */ display: none;} 
+        #reset-btn { background-color: #f44336; display: none; /* Initially hidden */}
+        #response-toggle { background-color: #2196F3; display: none; /* Initially hidden */}
+
+        #response-form-container { /* Renamed container to avoid conflict if #response-form is A-Frame internal */
+            position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); 
+            width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.85); 
+            backdrop-filter: blur(5px); border-radius: 15px; padding: 20px; color: white; 
+            z-index: 1001; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+        }
+        #response-form-container input, #response-form-container textarea { width: calc(100% - 20px); padding: 10px; margin: 8px 0 12px; border: 1px solid #555; border-radius: 5px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 16px; }
+        #response-form-container textarea { height: 80px; resize: none; } 
+        #response-form-container button { background: #4CAF50; color: white; border: none; padding: 12px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; }
+        #response-form-container h3 { margin-top: 0; text-align: center; font-weight: 700; } 
+        #response-status { margin-top: 12px; text-align: center; font-weight: bold; min-height: 20px; }
+
+        #instructions { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(3px); color: white; padding: 12px 18px; border-radius: 10px; text-align: center; font-size: 16px; z-index: 1000; max-width: 80%;}
+        
+        /* Permission overlay from index.html, may need adjustment for location permissions */
+        #permission-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); z-index: 4000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; padding: 20px; }
+        #permission-overlay h2 { font-weight: 700; } 
+        #permission-btn { margin-top: 20px; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: 700; cursor: pointer; }
+
+        #debug-info { position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: #0f0; padding: 8px 12px; border-radius: 5px; font-size: 11px; font-family: monospace; z-index: 2500; display: none; width: calc(100% - 40px); max-height: 150px; overflow-y: auto; }
+        
+        .location-info-style { /* For the GPS debug info from Why Can't index.html */
             position: fixed;
-            bottom: 10px;
+            bottom: 100px; /* Adjusted to not overlap controls */
             left: 10px;
             color: white;
-            background: rgba(0, 0, 0, 0.5);
-            padding: 5px 10px;
-            font-family: Arial, sans-serif;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-family: 'Roboto', sans-serif;
             font-size: 12px;
             z-index: 999;
         }
-        
-        /* Response form styling */
-        .response-form {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 400px;
-            background: rgba(0, 0, 0, 0.7);
-            border-radius: 10px;
-            padding: 15px;
-            color: white;
-            font-family: Arial, sans-serif;
-            z-index: 1000;
-            display: none; /* Hidden by default, shown when near location */
-        }
-        
-        .response-form input,
-        .response-form textarea {
-            width: 100%;
-            padding: 8px;
-            margin: 5px 0 10px;
-            border: none;
-            border-radius: 5px;
-            background: rgba(255, 255, 255, 0.9);
-            font-family: Arial, sans-serif;
-        }
-        
-        .response-form textarea {
-            height: 80px;
-            resize: none;
-        }
-        
-        .response-form button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            width: 100%;
-        }
-        
-        .response-form button:hover {
-            background: #3e8e41;
-        }
-        
-        .response-form h3 {
-            margin-top: 0;
-            text-align: center;
-        }
-        
-        .response-status {
-            margin-top: 10px;
-            text-align: center;
-            font-weight: bold;
-            min-height: 20px;
-        }
-        
-        .response-toggle {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            font-size: 24px;
-            cursor: pointer;
-            z-index: 1000;
-            display: none; /* Hidden by default, shown when near location */
-        }
     </style>
-    
-    <script>
-        // Helper function to convert decimal degrees to radians
-        function toRadians(degrees) {
-            return degrees * Math.PI / 180;
+
+    <script id="flowerVertexShader" type="x-shader/x-vertex">
+        varying vec2 vUv; varying vec2 vInstanceRandomVec2; varying float vInstanceStemGrowTime; varying float vInstanceFlowerGrowTime;
+        attribute vec2 instanceRandomVec2; attribute float instanceStemGrowTime; attribute float instanceFlowerGrowTime;
+        void main() {
+            vUv = uv; vInstanceRandomVec2 = instanceRandomVec2; vInstanceStemGrowTime = instanceStemGrowTime; vInstanceFlowerGrowTime = instanceFlowerGrowTime;
+            gl_Position = projectionMatrix * viewMatrix * instanceMatrix * vec4(position, 1.0);
         }
-        
-        // Helper function to convert radians to decimal degrees
-        function toDegrees(radians) {
-            return radians * 180 / Math.PI;
-        }
-        
-        // Function to calculate distance between two coordinates
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // Earth's radius in meters
-            const φ1 = toRadians(lat1);
-            const φ2 = toRadians(lat2);
-            const Δφ = toRadians(lat2 - lat1);
-            const Δλ = toRadians(lon2 - lon1);
-            
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-                      Math.cos(φ1) * Math.cos(φ2) *
-                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            
-            return R * c; // Distance in meters
-        }
-        
-        // Flower model placer component
-        AFRAME.registerComponent('flower-garden', {
-            schema: {
-                flowerCount: {type: 'number', default: 15},
-                radius: {type: 'number', default: 3},
-                fixedToLocation: {type: 'boolean', default: true}
-            },
-            
-            init: function() {
-                // Store a reference to the component
-                const component = this;
-                
-                // Listen for the GPS camera update event
-                window.addEventListener('gps-camera-update-position', function() {
-                    // Only place flowers once
-                    if (!component.flowersPlaced) {
-                        component.placeFlowers();
-                        component.flowersPlaced = true;
-                    }
-                });
-                
-                // Fallback in case GPS event doesn't fire
-                setTimeout(() => {
-                    if (!this.flowersPlaced) {
-                        this.placeFlowers();
-                        this.flowersPlaced = true;
-                    }
-                }, 3000);
-            },
-            
-            placeFlowers: function() {
-                // Path to models - adjust to your server location
-                const basePath = './models/'; // Update this path to match your server structure
-                
-                // Local flower model files from repository
-                const flowerModels = [
-                    '6 Orchid.glb',
-                    '7 Poppy.glb',
-                    '8 Iris.glb',
-                    '13 Marigold.glb',
-                    '16 Lavender.glb',
-                    '17 Hibiscus.glb',
-                    '20 Violet.glb',
-                    '24 Cosmos.glb',
-                    '25 Snapdragon.glb',
-                    '26 Morning Glory.glb',
-                    '27 Anemone.glb',
-                    '30 Primrose.glb'
-                ];
-                
-                // Place flowers in a circular pattern on the ground
-                for (let i = 0; i < this.data.flowerCount; i++) {
-                    // Calculate position in a circle with some randomness
-                    const angle = (i / this.data.flowerCount) * Math.PI * 2;
-                    const randomRadius = this.data.radius * (0.3 + Math.random() * 0.7);
-                    const x = Math.cos(angle) * randomRadius;
-                    const z = Math.sin(angle) * randomRadius;
-                    
-                    // Randomize model selection
-                    const modelIndex = Math.floor(Math.random() * flowerModels.length);
-                    const modelUrl = basePath + flowerModels[modelIndex];
-                    
-                    // Create flower entity
-                    const flower = document.createElement('a-entity');
-                    flower.setAttribute('gltf-model', modelUrl);
-                    flower.setAttribute('class', 'flower-model');
-                    
-                    // Start position below ground
-                    flower.setAttribute('position', {x: x, y: -1.5, z: z});
-                    
-                    // Random scale, but keep it proportional
-                    const scale = 0.5 + Math.random() * 0.3;
-                    flower.setAttribute('scale', {
-                        x: scale,
-                        y: scale,
-                        z: scale
-                    });
-                    
-                    flower.setAttribute('rotation', {
-                        x: 0, 
-                        y: Math.random() * 360, 
-                        z: 0
-                    });
-                    
-                    // Add grow-up animation
-                    flower.setAttribute('animation__grow', {
-                        property: 'position',
-                        from: `${x} -1.5 ${z}`,
-                        to: `${x} -0.5 ${z}`,
-                        dur: 3000 + Math.random() * 2000,
-                        delay: 1000 + Math.random() * 5000,
-                        easing: 'easeOutElastic',
-                        loop: false
-                    });
-                    
-                    // Add subtle sway animation
-                    flower.setAttribute('animation__sway', {
-                        property: 'rotation',
-                        from: `0 ${Math.random() * 360} 0`,
-                        to: `0 ${Math.random() * 360 + 15} 0`,
-                        dur: 10000 + Math.random() * 5000,
-                        delay: 4000 + Math.random() * 2000,
-                        easing: 'easeInOutSine',
-                        loop: true,
-                        dir: 'alternate'
-                    });
-                    
-                    this.el.appendChild(flower);
-                    
-                    // Log flower creation for debugging
-                    console.log(`Placed flower at (${x}, -0.5, ${z})`);
-                }
-                
-                // Add a debugging cube at origin point
-                const originCube = document.createElement('a-box');
-                originCube.setAttribute('position', '0 0 0');
-                originCube.setAttribute('color', 'red');
-                originCube.setAttribute('scale', '0.2 0.2 0.2');
-                originCube.setAttribute('opacity', '0.7');
-                this.el.appendChild(originCube);
-                
-                console.log(`Placed ${this.data.flowerCount} flowers around GPS location`);
-            }
-        });
-        
-        // Location proximity checker component
-        AFRAME.registerComponent('location-check', {
-            schema: {
-                targetLat: {type: 'number', default: 35.996417},
-                targetLon: {type: 'number', default: -78.909944},
-                threshold: {type: 'number', default: 100}, // Distance threshold in meters
-                debugMode: {type: 'boolean', default: true} // Enable more detailed debugging
-            },
-            
-            init: function() {
-                this.checkingLocation = false;
-                this.locationDisplay = document.createElement('div');
-                this.locationDisplay.className = 'location-info';
-                document.body.appendChild(this.locationDisplay);
-                
-                // Add controls for testing
-                if (this.data.debugMode) {
-                    this.addDebugControls();
-                }
-                
-                // Start checking location when user has allowed geolocation
-                this.startLocationCheck();
-            },
-            
-            addDebugControls: function() {
-                const debugControls = document.createElement('div');
-                debugControls.className = 'debug-controls';
-                debugControls.style.position = 'fixed';
-                debugControls.style.top = '10px';
-                debugControls.style.right = '10px';
-                debugControls.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-                debugControls.style.color = 'white';
-                debugControls.style.padding = '10px';
-                debugControls.style.zIndex = '999';
-                debugControls.innerHTML = `
-                    <div>Debug Controls</div>
-                    <button id="place-here">Place Garden Here</button>
-                    <button id="toggle-ground">Toggle Ground</button>
-                    <button id="toggle-debug">Toggle Debug</button>
-                `;
-                document.body.appendChild(debugControls);
-                
-                // Place garden at current location
-                document.getElementById('place-here').addEventListener('click', () => {
-                    navigator.geolocation.getCurrentPosition((position) => {
-                        const garden = document.getElementById('garden-container');
-                        garden.setAttribute('gps-projected-entity-place', {
-                            latitude: position.coords.latitude,
-                            longitude: position.coords.longitude
-                        });
-                        alert(`Garden placed at: ${position.coords.latitude}, ${position.coords.longitude}`);
-                    });
-                });
-                
-                // Toggle ground visibility
-                document.getElementById('toggle-ground').addEventListener('click', () => {
-                    const ground = document.getElementById('ground-reference');
-                    const currentOpacity = ground.getAttribute('material').opacity;
-                    ground.setAttribute('material', 'opacity', currentOpacity > 0 ? 0 : 0.3);
-                });
-                
-                // Toggle debug elements
-                document.getElementById('toggle-debug').addEventListener('click', () => {
-                    const scene = document.querySelector('a-scene');
-                    const debugUIEnabled = scene.getAttribute('arjs').debugUIEnabled;
-                    scene.setAttribute('arjs', 'debugUIEnabled', !debugUIEnabled);
-                });
-            },
-            
-            startLocationCheck: function() {
-                if (this.checkingLocation) return;
-                this.checkingLocation = true;
-                
-                const component = this;
-                
-                // Check location periodically
-                this.locationInterval = setInterval(() => {
-                    if ('geolocation' in navigator) {
-                        navigator.geolocation.getCurrentPosition((position) => {
-                            const currentLat = position.coords.latitude;
-                            const currentLon = position.coords.longitude;
-                            const distance = calculateDistance(
-                                currentLat, currentLon,
-                                component.data.targetLat, component.data.targetLon
-                            );
-                            
-                            // Update location info display
-                            component.locationDisplay.innerHTML = `
-                                <div>Current: ${currentLat.toFixed(6)}, ${currentLon.toFixed(6)}</div>
-                                <div>Target: ${component.data.targetLat.toFixed(6)}, ${component.data.targetLon.toFixed(6)}</div>
-                                <div>Distance: ${distance.toFixed(1)}m</div>
-                            `;
-                            
-                            // If we're close enough to the target location
-                            if (distance < component.data.threshold) {
-                                component.locationDisplay.innerHTML += '<div><strong>You are near the garden location!</strong></div>';
-                                // Ensure garden is visible
-                                document.getElementById('garden-container').setAttribute('visible', true);
-                                
-                                // Show the response form toggle button
-                                document.getElementById('response-toggle').style.display = 'block';
-                            } else {
-                                component.locationDisplay.innerHTML += `<div>Move ${distance.toFixed(1)}m closer to see the garden</div>`;
-                                // Hide the response form and toggle button when far away
-                                document.getElementById('response-form').style.display = 'none';
-                                document.getElementById('response-toggle').style.display = 'none';
-                            }
-                            
-                            // Log camera position for debugging
-                            if (component.data.debugMode) {
-                                const camera = document.querySelector('[gps-projected-camera]');
-                                if (camera) {
-                                    const cameraPos = camera.getAttribute('position');
-                                    console.log(`Camera position: ${JSON.stringify(cameraPos)}`);
-                                }
-                            }
-                            
-                        }, (error) => {
-                            component.locationDisplay.innerHTML = `Location error: ${error.message}`;
-                        }, {
-                            enableHighAccuracy: true,
-                            maximumAge: 0,
-                            timeout: 5000
-                        });
-                    } else {
-                        component.locationDisplay.innerHTML = 'Geolocation not available in your browser';
-                        clearInterval(component.locationInterval);
-                    }
-                }, 3000);
-            },
-            
-            remove: function() {
-                if (this.locationInterval) {
-                    clearInterval(this.locationInterval);
-                }
-                if (this.locationDisplay.parentNode) {
-                    this.locationDisplay.parentNode.removeChild(this.locationDisplay);
-                }
-            }
-        });
+    </script>
+    <script id="flowerFragmentShader" type="x-shader/x-fragment">
+        #define PI 3.14159265359
+        precision highp float;
+        uniform float u_time; // Global time
+        varying vec2 vUv;
+        varying vec2 vInstanceRandomVec2;
+        varying float vInstanceStemGrowTime;
+        varying float vInstanceFlowerGrowTime;
+
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+        float snoise(vec2 v) { const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439); vec2 i = floor(v + dot(v, C.yy)); vec2 x0 = v - i + dot(i, C.xx); vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0); vec4 x12 = x0.xyxy + C.xxzz; x12.xy -= i1; i = mod289(i); vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0)); vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0); m = m*m; m = m*m; vec3 x = 2.0 * fract(p * C.www) - 1.0; vec3 h = abs(x) - 0.5; vec3 ox = floor(x + 0.5); vec3 a0 = x - ox; m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h); vec3 g; g.x = a0.x * x0.x + h.x * x0.y; g.yz = a0.yz * x12.xz + h.yz * x12.yw; return 130.0 * dot(m, g); }
+        float easeQuinticInOut(float t) { return t < 0.5 ? 16.0 * t * t * t * t * t : 1.0 + 16.0 * (--t) * t * t * t * t; }
+        float get_flower_shape(vec2 _p, float _pet_n, float _angle, float _outline, float flowerTime, vec2 randomVec, float globalTime) { _angle *= 3.0; float bloomCompletion = min(flowerTime / 2.0, 1.0); if (bloomCompletion >= 1.0) { _angle += sin(globalTime * 0.3 + randomVec.y * 5.0) * 0.1; } _p = vec2(_p.x * cos(_angle) - _p.y * sin(_angle), _p.x * sin(_angle) + _p.y * cos(_angle)); float a = atan(_p.y, _p.x); float flower_sectoral_shape = pow(abs(sin(a * _pet_n)), 0.4) + 0.25; vec2 flower_size_range = vec2(0.03, 0.1); float base_scale_factor = 0.55; float size = (flower_size_range[0] + randomVec[0] * flower_size_range[1]) * base_scale_factor; if (bloomCompletion >= 1.0) { size *= (1.0 + sin(globalTime * 0.7 + randomVec.x * 6.0) * 0.03); } float dist = length(_p); float flower_radial_shape = pow(dist / size, 2.0); float texture_noise = snoise((_p + randomVec) * 20.0) * 0.05; flower_radial_shape += texture_noise * bloomCompletion; flower_radial_shape -= 0.1 * sin(8.0 * a); flower_radial_shape = max(0.1, flower_radial_shape); float normalizedFlowerTime = min(flowerTime / 2.0, 1.0); float grow_progress = easeQuinticInOut(normalizedFlowerTime); float shape_value = smoothstep(flower_sectoral_shape, flower_sectoral_shape * 0.8, flower_radial_shape); float flower_shape = shape_value * grow_progress; return flower_shape; }
+        float get_stem_shape(vec2 _p, vec2 _plane_uv, float _w, float _angle, float stemTime, vec2 randomVec) { _w = max(0.004, _w); _w *= 0.6; float bend_amount = 0.8; float x_offset = _p.y * sin(_angle * 2.0) * bend_amount; x_offset *= pow(max(0.0, _plane_uv.y), 1.5); _p.x -= x_offset; float noise_power = 0.6; float stem_noise = noise_power * snoise(8.0 * _plane_uv + randomVec[0] * 5.0); stem_noise *= smoothstep(0.0, 0.15, length(_p)); stem_noise *= smoothstep(0.0, 0.05, _plane_uv.y); _p.x += stem_noise * 0.1; float left = smoothstep(-_w, 0.0, _p.x); float right = 1.0 - smoothstep(0.0, _w, _p.x); float stem_line = left * right; float normalizedStemTime = min(stemTime / 1.0, 1.0); float grow_progress = easeQuinticInOut(normalizedStemTime); float grow_height = -0.5 + grow_progress * 0.5; float height_mask = smoothstep(grow_height - 0.05, grow_height, _p.y); float stem_shape = stem_line * height_mask; stem_shape *= smoothstep(0.01, -0.01, _p.y); stem_shape *= step(0.0, _plane_uv.y); return stem_shape; }
+        void main() { vec2 centeredUv = vUv - 0.5; vec3 stem_color = vec3(0.1 + vInstanceRandomVec2[0] * 0.6, 0.6, 0.2); vec3 flower_color_base = vec3(0.6 + 0.5 * vInstanceRandomVec2[1], 0.1, 0.9 - 0.5 * vInstanceRandomVec2[1]); float angle = 1.5 * (vInstanceRandomVec2[0] - 0.5); float stem_shape = get_stem_shape(centeredUv, vUv, 0.007, angle, vInstanceStemGrowTime, vInstanceRandomVec2); float color_noise_val = (snoise(vUv * 15.0 + vInstanceRandomVec2 * 2.0) + 1.0) * 0.5; color_noise_val = pow(color_noise_val, 1.5); vec3 flower_color_textured = flower_color_base * (0.8 + color_noise_val * 0.4); float petals_back_number = 2.0 + floor(vInstanceRandomVec2[0] * 3.0); float angle_offset_current = -(2.0 * step(0.0, angle) - 1.0) * 0.2 * min(vInstanceFlowerGrowTime, 2.0); float flower_back_shape = get_flower_shape(centeredUv, petals_back_number, angle + angle_offset_current, 1.5, vInstanceFlowerGrowTime, vInstanceRandomVec2, u_time); float petals_front_number = 3.0 + floor(vInstanceRandomVec2[1] * 3.0); float flower_front_shape = get_flower_shape(centeredUv, petals_front_number, angle, 1.0, vInstanceFlowerGrowTime, vInstanceRandomVec2, u_time); vec3 final_color = vec3(0.0); final_color += (stem_shape * stem_color); final_color += (flower_back_shape * (flower_color_textured + vec3(0.0, 0.6 * min(vInstanceFlowerGrowTime / 2.0, 1.0), 0.0))); final_color += (flower_front_shape * flower_color_textured); final_color.r *= 1.0 - (0.5 * flower_back_shape * flower_front_shape); final_color.b *= 1.0 - (flower_back_shape * flower_front_shape); float alpha = max(stem_shape, max(flower_back_shape, flower_front_shape)); alpha = smoothstep(0.0, 0.02, alpha); alpha *= 0.75; if (alpha < 0.01) discard; gl_FragColor = vec4(final_color, alpha); }
     </script>
 </head>
-<body style="margin: 0; overflow: hidden;">
-    <div class="arjs-loader">
-        <div>
-            <h1>Community Garden AR</h1>
-            <p>Loading... Please allow camera and location access when prompted.</p>
-            <p>This experience works best when you are near the target location.</p>
+
+<body>
+    <div id="loading">
+        <h1>Why can't...?</h1>
+        <p>Initializing garden experience...</p>
+    </div>
+
+    <div class="arjs-loader-display">
+        <p>Loading AR, please wait and grant permissions...</p>
+    </div>
+    
+    <div id="permission-overlay">
+         <h2>Permissions Required</h2>
+         <p>This AR experience needs access to your camera and location.</p>
+         <button id="permission-btn">Allow Access</button>
+    </div>
+
+    <div id="main-message-display" class="message-container-style" style="display: none;">
+        <p>Why can't this be a community garden?</p>
+    </div>
+    <div id="dynamic-response-text-display" class="dynamic-response-display-style">
         </div>
-    </div>
+
+
+    <div id="instructions">Point your camera around. The garden will appear if you are near the location.</div>
     
-    <!-- Response form -->
-    <div id="response-form" class="response-form">
+    <div class="controls">
+        <button id="response-toggle" class="btn" title="Share Thoughts">+</button>
+        <button id="reset-btn" class="btn" title="Hide Garden">↺</button>
+    </div>
+
+    <div id="response-form-container">
         <h3>Share Your Thoughts</h3>
-        <form id="garden-response-form">
+        <form id="garden-response-form-actual">
             <label for="name">Your Name:</label>
-            <input type="text" id="name" name="name" required>
-            
-            <label for="message">Why do you think this should be a community garden?</label>
-            <textarea id="message" name="message" required></textarea>
-            
-            <button type="submit">Submit</button>
+            <input type="text" id="name" name="name" placeholder="e.g., Alex P." required>
+            <label for="form-message">Why can't this be a community garden?</label>
+            <textarea id="form-message" name="message" placeholder="Your ideas..." required></textarea>
+            <button type="submit">Submit Idea</button>
         </form>
-        <div id="response-status" class="response-status"></div>
+        <div id="response-status"></div>
     </div>
-    
-    <!-- Toggle button for the form -->
-    <button id="response-toggle" class="response-toggle">+</button>
-    
-    <a-scene 
+
+    <div id="debug-info"></div>
+
+    <a-scene
+        id="ar-scene"
         vr-mode-ui="enabled: false"
         embedded
-        arjs="sourceType: webcam; debugUIEnabled: true; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
-        renderer="logarithmicDepthBuffer: true;"
-        location-check="targetLat: 35.996417; targetLon: -78.909944; threshold: 100">
-        
-        <!-- GPS-anchored entities -->
-        <a-entity id="garden-container"
-            gps-projected-entity-place="latitude: 35.996417; longitude: -78.909944;">
-            
-            <!-- Add a reference ground plane to help with placement -->
-            <a-circle 
-                id="ground-reference"
-                material="color: #7c5c3c; opacity: 0.3; side: double"
-                rotation="-90 0 0"
-                radius="5"
-                position="0 -0.1 0">
-            </a-circle>
-            
-            <!-- Text floating above the garden -->
-            <a-text 
-                id="garden-text"
-                value="Why can't this be a community garden?"
-                color="white" 
-                align="center"
-                width="4"
-                position="0 1.5 0"
-                scale="1 1 1"
-                look-at="[gps-camera]"
-                animation="property: position; to: 0 1.7 0; dur: 3000; easing: easeInOutSine; loop: true; dir: alternate;">
-            </a-text>
-            
-            <!-- Response display text -->
-            <a-text
-                id="response-display"
-                value=""
-                color="#B3FFAE"
-                align="center"
-                width="3.5"
-                position="0 0.9 0"
-                scale="0.8 0.8 0.8"
-                look-at="[gps-camera]"
-                animation="property: position; to: 0 1.0 0; dur: 4000; easing: easeInOutSine; loop: true; dir: alternate; delay: 1500;">
-            </a-text>
-            
-            <!-- 3D Flower Garden -->
-            <a-entity 
-                id="flower-container"
-                position="0 0 0"
-                flower-garden="flowerCount: 20; radius: 4">
+        renderer="logarithmicDepthBuffer: true; colorManagement: true; physicallyCorrectLights: true;"
+        arjs="
+            sourceType: webcam;
+            debugUIEnabled: false;
+            detectionMode: mono_and_matrix;
+            matrixCodeType: 3x3;
+            sourceWidth: 1280; sourceHeight: 960;
+            displayWidth: 1280; displayHeight: 960;"
+        location-check="targetLat: 35.996417; targetLon: -78.909944; threshold: 50; debugElement: #debug-info"
+        loading-screen-manager>
+
+        <a-entity id="gps-garden"
+            gps-projected-entity-place="latitude: 35.996417; longitude: -78.909944;" /* REPLACE WITH YOUR TARGET COORDS */
+            visible="false" 
+            styled-flower-garden="flowerCount: 150; radius: 10;"> 
             </a-entity>
-        </a-entity>
-        
-        <!-- Camera with GPS tracking -->
-        <a-camera gps-projected-camera="simulateLatitude: 35.996417; simulateLongitude: -78.909944;" rotation-reader></a-camera>
+
+        <a-camera gps-projected-camera="simulateLatitude: 35.996417; simulateLongitude: -78.909944; gpsMinDistance: 5; gpsTimeInterval: 1000" rotation-reader></a-camera>
     </a-scene>
-    
+
     <script>
-        // Loader handling
-        document.addEventListener('DOMContentLoaded', function() {
-            const arjsLoader = document.querySelector('.arjs-loader');
-            
-            // Hide loader after GPS data is initialized
-            window.addEventListener('gps-camera-update-position', function() {
-                if (arjsLoader) {
-                    arjsLoader.style.display = 'none';
-                }
-                console.log('GPS position updated');
-            });
-            
-            // Fallback loader hiding
-            setTimeout(() => {
-                if (arjsLoader) {
-                    arjsLoader.style.display = 'none';
-                }
-            }, 8000);
-            
-            // Scene loaded event
-            const scene = document.querySelector('a-scene');
-            if (scene) {
-                scene.addEventListener('loaded', function() {
-                    console.log('Scene loaded');
-                    // Load responses when scene is ready
-                    loadResponses();
+        // Helper functions for distance calculation (from Why Can't index.html)
+        function toRadians(degrees) { return degrees * Math.PI / 180; }
+        function toDegrees(radians) { return radians * 180 / Math.PI; }
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; // Earth's radius in meters
+            const φ1 = toRadians(lat1); const φ2 = toRadians(lat2);
+            const Δφ = toRadians(lat2 - lat1); const Δλ = toRadians(lon2 - lon1);
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c; // Distance in meters
+        }
+
+        // Component to manage loading screen based on AR.js events
+        AFRAME.registerComponent('loading-screen-manager', {
+            init: function () {
+                const loadingScreen = document.getElementById('loading');
+                const arjsLoaderDisplay = document.querySelector('.arjs-loader-display'); // AR.js's own
+                
+                // Initially hide AR.js loader, use our custom one.
+                if(arjsLoaderDisplay) arjsLoaderDisplay.style.display = 'none';
+
+
+                this.el.sceneEl.addEventListener('arjs-video-loaded', () => {
+                    console.log('AR.js video loaded');
                 });
+                this.el.sceneEl.addEventListener('arjs-gps-camera-loading', () => {
+                    console.log('AR.js GPS Camera loading');
+                    if(loadingScreen) loadingScreen.style.display = 'flex';
+                });
+                this.el.sceneEl.addEventListener('gps-camera-update-position', () => {
+                    console.log('AR.js GPS Camera position UPDATE');
+                     // This is a good point to hide the main loading screen
+                    if (loadingScreen && loadingScreen.style.display !== 'none') {
+                        loadingScreen.style.display = 'none';
+                        console.log('Main loading screen hidden.');
+                    }
+                });
+
+                // Fallback to hide loading screen
+                setTimeout(() => {
+                    if (loadingScreen && loadingScreen.style.display !== 'none') {
+                        loadingScreen.style.display = 'none';
+                        console.log('Main loading screen hidden by timeout.');
+                    }
+                }, 8000); // Increased timeout
             }
-            
-            // Response form toggle
-            const responseToggle = document.getElementById('response-toggle');
-            const responseForm = document.getElementById('response-form');
-            
-            responseToggle.addEventListener('click', function() {
-                const isVisible = responseForm.style.display === 'block';
-                responseForm.style.display = isVisible ? 'none' : 'block';
-                responseToggle.textContent = isVisible ? '+' : 'x';
-            });
-            
-            // Responses cycling variables
-            let responses = [];
-            let currentResponseIndex = -1;
-            
-            // Function to load responses from Google Sheet
-            function loadResponses() {
-                // Display some default responses while loading
-                responses = [
-                    { name: "Jane", message: "We need more green space in our neighborhood!" },
-                    { name: "Carlos", message: "It would bring our community together." },
-                    { name: "Aisha", message: "I'd love to grow vegetables with my neighbors." }
-                ];
+        });
+
+
+        // A-Frame Component for Styled Flower Garden (from index.html logic)
+        AFRAME.registerComponent('styled-flower-garden', {
+            schema: {
+                flowerCount: { type: 'number', default: 100 },
+                radius: { type: 'number', default: 15 }, // Spread radius
+                minHeight: {type: 'number', default: -1.0},
+                maxHeight: {type: 'number', default: 0.5}
+            },
+
+            init: function () {
+                this.sceneEl = this.el.sceneEl;
+                this.camera = this.sceneEl.camera; // A-Frame camera
+                this.clock = new AFRAME.THREE.Clock();
+
+                this.MAX_FLOWERS = this.data.flowerCount;
+                this.currentFlowerCount = 0;
+                this.instanceStemGrowTimes = new Float32Array(this.MAX_FLOWERS);
+                this.instanceFlowerGrowTimes = new Float32Array(this.MAX_FLOWERS);
+                this.instanceRandomVec2s = new Float32Array(this.MAX_FLOWERS * 2);
+                this.instanceStemGrowDuration = new Float32Array(this.MAX_FLOWERS);
+                this.instanceFlowerGrowDuration = new Float32Array(this.MAX_FLOWERS);
+                this.instanceIsBlooming = new Array(this.MAX_FLOWERS).fill(false);
+                this.dummy = new AFRAME.THREE.Object3D();
+
+                this.initFlowers();
                 
-                // URL of your deployed Google Apps Script web app with action parameter
-                const scriptURL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec?action=getResponses';
-                
-                // Attempt to load real responses
-                fetch(scriptURL)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.result === 'success' && data.responses && data.responses.length > 0) {
-                            responses = data.responses;
-                            console.log(`Loaded ${responses.length} responses`);
-                        }
-                    })
-                    .catch(error => {
-                        console.error('Error loading responses:', error);
-                    })
-                    .finally(() => {
-                        // Start cycling responses, even if using defaults
-                        if (responses.length > 0) {
-                            startResponseCycle();
-                        }
-                    });
-            }
-            
-            // Function to start cycling through responses
-            function startResponseCycle() {
-                // Show first response
-                showNextResponse();
-                
-                // Set interval to cycle through responses
-                setInterval(showNextResponse, 12000); // Change response every 12 seconds
-            }
-            
-            // Function to display the next random response
-            function showNextResponse() {
-                if (responses.length === 0) return;
-                
-                // Get a random index that's different from the current one
-                let newIndex;
-                do {
-                    newIndex = Math.floor(Math.random() * responses.length);
-                } while (responses.length > 1 && newIndex === currentResponseIndex);
-                
-                currentResponseIndex = newIndex;
-                const response = responses[currentResponseIndex];
-                
-                // Update the response display text
-                const responseDisplay = document.getElementById('response-display');
-                if (responseDisplay) {
-                    responseDisplay.setAttribute('value', `"${response.message}"\n- ${response.name}`);
+                // Add main text as part of this component if desired
+                const textEl = document.createElement('a-text');
+                textEl.setAttribute('value', "Why can't this be a community garden?");
+                textEl.setAttribute('align', 'center');
+                textEl.setAttribute('color', '#FFF');
+                textEl.setAttribute('width', '6'); // Adjust width as needed
+                textEl.setAttribute('position', `0 ${this.data.maxHeight + 1.0} 0`); // Position above flowers
+                textEl.setAttribute('look-at', '[gps-projected-camera]');
+                this.el.appendChild(textEl); // Add to this component's entity
+
+                this.el.addEventListener('object3dset', () => {
+                     if (this.el.object3D && this.instancedFlowers) {
+                        this.el.object3D.add(this.instancedFlowers);
+                        console.log('Styled Flower Garden: InstancedMesh added to A-Frame entity.');
+                        this.placeFlowers(); // Place flowers once object3D is ready
+                    }
+                });
+            },
+
+            initFlowers: function () {
+                const baseFlowerGeometry = new AFRAME.THREE.PlaneGeometry(1.8, 1.8);
+                const baseFlowerMaterial = new AFRAME.THREE.ShaderMaterial({
+                    uniforms: { u_time: { value: 0.0 } },
+                    vertexShader: document.getElementById('flowerVertexShader').textContent,
+                    fragmentShader: document.getElementById('flowerFragmentShader').textContent,
+                    transparent: true,
+                    side: AFRAME.THREE.DoubleSide,
+                    depthWrite: false
+                });
+
+                this.instancedFlowers = new AFRAME.THREE.InstancedMesh(baseFlowerGeometry, baseFlowerMaterial, this.MAX_FLOWERS);
+                this.instancedFlowers.instanceMatrix.setUsage(AFRAME.THREE.DynamicDrawUsage);
+                this.instancedFlowers.geometry.setAttribute('instanceRandomVec2', new AFRAME.THREE.InstancedBufferAttribute(this.instanceRandomVec2s, 2));
+                this.instancedFlowers.geometry.setAttribute('instanceStemGrowTime', new AFRAME.THREE.InstancedBufferAttribute(this.instanceStemGrowTimes, 1));
+                this.instancedFlowers.geometry.setAttribute('instanceFlowerGrowTime', new AFRAME.THREE.InstancedBufferAttribute(this.instanceFlowerGrowTimes, 1));
+                this.instancedFlowers.count = 0;
+                // The mesh will be added to this.el.object3D once it's available (see 'object3dset' listener)
+            },
+
+            placeFlowers: function () {
+                if (!this.instancedFlowers) {
+                    console.error("placeFlowers: InstancedMesh not ready."); return;
+                }
+                const flowerCount = this.MAX_FLOWERS;
+                const radius = this.data.radius;
+                const minHeight = this.data.minHeight;
+                const maxHeight = this.data.maxHeight;
+
+                this.instanceIsBlooming.fill(false);
+                this.instanceStemGrowTimes.fill(0);
+                this.instanceFlowerGrowTimes.fill(0);
+                this.instanceRandomVec2s.fill(0);
+                this.instanceStemGrowDuration.fill(0);
+                this.instanceFlowerGrowDuration.fill(0);
+                this.currentFlowerCount = flowerCount;
+
+                for (let i = 0; i < this.currentFlowerCount; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * radius; // Flowers spread from center up to radius
+                    const x = Math.cos(angle) * distance;
+                    const z = Math.sin(angle) * distance;
+                    // Y position relative to the gps-projected-entity-place
+                    const y = minHeight + Math.random() * (maxHeight - minHeight);
+
+                    this.dummy.position.set(x, y, z);
+                    this.dummy.rotation.set(0, Math.random() * Math.PI * 2, 0); // Initial random rotation
+                    const scaleVariation = 0.6 + Math.random() * 0.8;
+                    this.dummy.scale.set(scaleVariation, scaleVariation, scaleVariation);
+                    this.dummy.updateMatrix();
+                    this.instancedFlowers.setMatrixAt(i, this.dummy.matrix);
+
+                    this.instanceRandomVec2s[i * 2 + 0] = Math.random();
+                    this.instanceRandomVec2s[i * 2 + 1] = Math.random();
+                    this.instanceStemGrowTimes[i] = 0.0;
+                    this.instanceFlowerGrowTimes[i] = 0.0;
+                    this.instanceStemGrowDuration[i] = 1.0;
+                    this.instanceFlowerGrowDuration[i] = 2.0;
                     
-                    // Add a brief fade animation
-                    responseDisplay.setAttribute('animation__fade', {
-                        property: 'opacity',
-                        from: 0,
-                        to: 1,
-                        dur: 2000,
-                        easing: 'easeOutQuad'
-                    });
+                    // Stagger blooming
+                    setTimeout(() => { this.instanceIsBlooming[i] = true; }, 200 + Math.random() * 3000);
+                }
+                this.instancedFlowers.instanceMatrix.needsUpdate = true;
+                if (this.instancedFlowers.geometry.attributes.instanceRandomVec2) this.instancedFlowers.geometry.attributes.instanceRandomVec2.needsUpdate = true;
+                if (this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true;
+                if (this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
+                this.instancedFlowers.count = this.currentFlowerCount;
+                console.log(`Styled Flower Garden: Placed ${this.currentFlowerCount} flowers.`);
+            },
+            
+            resetFlowers: function() {
+                if (this.instancedFlowers) {
+                    this.instancedFlowers.count = 0;
+                    if (this.instancedFlowers.instanceMatrix) this.instancedFlowers.instanceMatrix.needsUpdate = true;
+                    this.instanceIsBlooming.fill(false);
+                    this.instanceStemGrowTimes.fill(0);
+                    this.instanceFlowerGrowTimes.fill(0);
+                    this.currentFlowerCount = 0;
+                    console.log("Styled Flower Garden: Flowers reset.");
+                }
+            },
+
+            tick: function (time, deltaTime) {
+                if (!this.instancedFlowers || this.instancedFlowers.count === 0 || !this.el.getAttribute('visible')) return;
+
+                const dt = deltaTime / 1000; // Convert ms to s
+                const elapsedTime = this.clock.getElapsedTime();
+
+                if (this.instancedFlowers.material.uniforms.u_time) {
+                    this.instancedFlowers.material.uniforms.u_time.value = elapsedTime;
+                }
+
+                let needsStemTimeUpdate = false;
+                let needsFlowerTimeUpdate = false;
+
+                for (let i = 0; i < this.instancedFlowers.count; i++) {
+                    if (this.instanceIsBlooming[i]) {
+                        let currentStemTime = this.instanceStemGrowTimes[i];
+                        let currentFlowerTime = this.instanceFlowerGrowTimes[i];
+                        const stemDuration = this.instanceStemGrowDuration[i];
+                        const flowerDuration = this.instanceFlowerGrowDuration[i];
+
+                        if (currentStemTime < stemDuration) {
+                            currentStemTime += dt;
+                            if(this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.setX(i, currentStemTime);
+                            needsStemTimeUpdate = true;
+                        } else if (currentFlowerTime < flowerDuration) {
+                            currentFlowerTime += dt;
+                             if(this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.setX(i, currentFlowerTime);
+                            needsFlowerTimeUpdate = true;
+                        }
+                        this.instanceStemGrowTimes[i] = currentStemTime;
+                        this.instanceFlowerGrowTimes[i] = currentFlowerTime;
+                    }
+                }
+
+                if (needsStemTimeUpdate && this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true;
+                if (needsFlowerTimeUpdate && this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
+                
+                // Billboarding flowers
+                if (this.camera && this.camera.el && this.camera.el.object3D) {
+                    const camWorldPos = new AFRAME.THREE.Vector3();
+                    this.camera.el.object3D.getWorldPosition(camWorldPos);
+
+                    for (let i = 0; i < this.instancedFlowers.count; i++) {
+                        this.instancedFlowers.getMatrixAt(i, this.dummy.matrix);
+                        this.dummy.matrix.decompose(this.dummy.position, this.dummy.quaternion, this.dummy.scale);
+                        
+                        // Convert flower local position to world position relative to the gps-garden entity
+                        const flowerWorldPos = this.el.object3D.localToWorld(this.dummy.position.clone());
+                        
+                        this.dummy.position.copy(flowerWorldPos); // Set dummy to world for lookAt
+                        this.dummy.lookAt(camWorldPos);
+                        
+                        // Convert back to local matrix for instanced mesh
+                        this.dummy.updateMatrix();
+                        this.el.object3D.worldToLocal(this.dummy.matrix); // Convert matrix to be local to parent
+                        
+                        this.instancedFlowers.setMatrixAt(i, this.dummy.matrix);
+                    }
+                    this.instancedFlowers.instanceMatrix.needsUpdate = true;
                 }
             }
-            
-            // Form submission handling
-            const gardenForm = document.getElementById('garden-response-form');
-            const statusDiv = document.getElementById('response-status');
-            
-            gardenForm.addEventListener('submit', function(e) {
-                e.preventDefault();
-                
-                // Get form data
-                const name = document.getElementById('name').value;
-                const message = document.getElementById('message').value;
-                const timestamp = new Date().toLocaleString();
-                
-                // Validate input
-                if (!name || !message) {
-                    statusDiv.textContent = 'Please fill out all fields.';
-                    statusDiv.style.color = '#ff6b6b';
+        });
+
+        // Location Proximity Checker (adapted from Why Can't index.html)
+        AFRAME.registerComponent('location-check', {
+            schema: {
+                targetLat: { type: 'number', default: 0 },
+                targetLon: { type: 'number', default: 0 },
+                threshold: { type: 'number', default: 50 }, // meters
+                debugElement: {type: 'selector'}
+            },
+            init: function () {
+                this.gardenEntity = document.getElementById('gps-garden');
+                this.mainMessageDisplay = document.getElementById('main-message-display');
+                this.dynamicResponseDisplay = document.getElementById('dynamic-response-text-display');
+                this.responseToggleBtn = document.getElementById('response-toggle');
+                this.resetBtn = document.getElementById('reset-btn');
+                this.instructionsDiv = document.getElementById('instructions');
+
+
+                if (!this.gardenEntity) {
+                    console.error("Location Check: gps-garden entity not found!");
                     return;
                 }
                 
-                // Update status
-                statusDiv.textContent = 'Submitting...';
-                statusDiv.style.color = 'white';
-                
-                // URL of your deployed Google Apps Script web app
-                // You need to replace this with your actual deployed script URL
-                const scriptURL = 'https://script.google.com/macros/s/AKfycbxBT2wnnk8feI8gZiMBKtrAPIX0DY5E6Qry4ayF8KVEa4v5hQHJPFeUSPdObuospRF0/exec';
-                
-                // Prepare URL with parameters (the format expected by the Google Apps Script)
-                const url = new URL(scriptURL);
-                url.searchParams.append('name', name);
-                url.searchParams.append('message', message);
-                url.searchParams.append('timestamp', timestamp);
-                
-                // Make the fetch request
-                fetch(url, {
-                    method: 'POST',
-                    mode: 'no-cors' // Required for Google Apps Script
-                })
-                .then(() => {
-                    // Success handling 
-                    // Note: With no-cors mode, we can't access response content
-                    // So we just assume success if the request didn't throw an error
-                    statusDiv.textContent = 'Thank you for sharing your thoughts!';
-                    statusDiv.style.color = '#4CAF50';
-                    gardenForm.reset();
+                this.debugEl = this.data.debugElement;
+                if (this.debugEl) this.debugEl.style.display = 'block'; // Show debug if present
+
+                console.log(`Location Check Initialized: Target ${this.data.targetLat}, ${this.data.targetLon}, Threshold: ${this.data.threshold}m`);
+
+                window.addEventListener('gps-camera-update-position', (event) => {
+                    const currentLat = event.detail.position.latitude;
+                    const currentLon = event.detail.position.longitude;
+                    const distance = calculateDistance(currentLat, currentLon, this.data.targetLat, this.data.targetLon);
+
+                    if (this.debugEl) {
+                        this.debugEl.innerHTML = `Current: ${currentLat.toFixed(6)}, ${currentLon.toFixed(6)}<br>Target: ${this.data.targetLat.toFixed(6)}, ${this.data.targetLon.toFixed(6)}<br>Distance: ${distance.toFixed(1)}m`;
+                    }
+
+                    if (distance < this.data.threshold) {
+                        if (!this.gardenEntity.getAttribute('visible')) {
+                            this.gardenEntity.setAttribute('visible', true);
+                            const flowerComponent = this.gardenEntity.components['styled-flower-garden'];
+                            if (flowerComponent) flowerComponent.placeFlowers(); // Re-place/show flowers
+                            
+                            if(this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'block';
+                            if(this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'block'; // Or trigger response loading
+                            if(this.responseToggleBtn) this.responseToggleBtn.style.display = 'flex';
+                            if(this.resetBtn) this.resetBtn.style.display = 'flex';
+                            if(this.instructionsDiv) this.instructionsDiv.style.display = 'none';
+                             loadAndCycleResponses(true); // Load/start cycling server responses
+                            console.log("Location Check: User IN RANGE. Garden visible.");
+                        }
+                    } else {
+                        if (this.gardenEntity.getAttribute('visible')) {
+                            this.gardenEntity.setAttribute('visible', false);
+                             const flowerComponent = this.gardenEntity.components['styled-flower-garden'];
+                            if (flowerComponent) flowerComponent.resetFlowers(); 
+
+                            if(this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'none';
+                            if(this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'none';
+                            if(this.responseToggleBtn) this.responseToggleBtn.style.display = 'none';
+                            if(this.resetBtn) this.resetBtn.style.display = 'none';
+                            const responseForm = document.getElementById('response-form-container');
+                            if(responseForm) responseForm.style.display = 'none';
+                            if(this.responseToggleBtn) this.responseToggleBtn.textContent = '+';
+                            if(this.instructionsDiv) this.instructionsDiv.style.display = 'block';
+                            console.log("Location Check: User OUT OF RANGE. Garden hidden.");
+                        }
+                    }
+                });
+            }
+        });
+        
+        // --- Global UI Event Listeners & Functions ---
+        document.addEventListener('DOMContentLoaded', function() {
+            const responseToggleBtn = document.getElementById('response-toggle');
+            const responseFormContainer = document.getElementById('response-form-container');
+            const gardenResponseForm = document.getElementById('garden-response-form-actual');
+            const responseStatusDiv = document.getElementById('response-status');
+            const resetBtn = document.getElementById('reset-btn');
+            const gardenEntity = document.getElementById('gps-garden');
+            const instructionsDiv = document.getElementById('instructions');
+            const mainMessageDisplay = document.getElementById('main-message-display');
+            const dynamicResponseTextDisplay = document.getElementById('dynamic-response-text-display');
+
+
+            if (responseToggleBtn && responseFormContainer) {
+                responseToggleBtn.addEventListener('click', function () {
+                    const isFormVisible = responseFormContainer.style.display === 'block';
+                    responseFormContainer.style.display = isFormVisible ? 'none' : 'block';
+                    responseToggleBtn.textContent = isFormVisible ? '+' : '✕';
+                });
+            }
+
+            if (resetBtn && gardenEntity) {
+                resetBtn.addEventListener('click', function() {
+                    gardenEntity.setAttribute('visible', false); // Hide the garden
+                    const flowerComponent = gardenEntity.components['styled-flower-garden'];
+                    if (flowerComponent) flowerComponent.resetFlowers();
                     
-                    // Hide form after successful submission
-                    setTimeout(() => {
-                        responseForm.style.display = 'none';
-                        responseToggle.textContent = '+';
-                    }, 3000);
+                    if(mainMessageDisplay) mainMessageDisplay.style.display = 'none';
+                    if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none';
+                    if(responseToggleBtn) responseToggleBtn.style.display = 'none';
+                    if(responseFormContainer) responseFormContainer.style.display = 'none';
+                    if(responseToggleBtn) responseToggleBtn.textContent = '+';
+                    if(resetBtn) resetBtn.style.display = 'none'; // Hide reset itself after reset
+                    if(instructionsDiv) instructionsDiv.style.display = 'block'; // Show instructions again
+                    console.log("Reset Button: Garden hidden by user.");
+                });
+            }
+
+            if (gardenResponseForm && responseStatusDiv) {
+                gardenResponseForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    const name = gardenResponseForm.name.value;
+                    const message = gardenResponseForm.message.value;
+                    const timestamp = new Date().toLocaleString();
+
+                    if (!name || !message) {
+                        responseStatusDiv.textContent = 'Please fill out all fields.';
+                        responseStatusDiv.style.color = '#ff6b6b';
+                        return;
+                    }
+                    responseStatusDiv.textContent = 'Submitting...';
+                    responseStatusDiv.style.color = 'white';
+
+                    // REPLACE WITH YOUR GOOGLE APPS SCRIPT URL for form submission
+                    const scriptURL = 'https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID_HERE/exec'; 
+                    const formData = new FormData();
+                    formData.append('name', name);
+                    formData.append('message', message);
+                    formData.append('timestamp', timestamp);
+                    formData.append('action', 'submitResponse'); // Assuming your script handles actions
+
+                    fetch(scriptURL, { method: 'POST', body: formData, mode: 'no-cors' }) // no-cors for simple sheet append
+                        .then(() => {
+                            responseStatusDiv.textContent = 'Thank you for sharing!';
+                            responseStatusDiv.style.color = '#4CAF50';
+                            gardenResponseForm.reset();
+                            setTimeout(() => { 
+                                if(responseFormContainer) responseFormContainer.style.display = 'none';
+                                if(responseToggleBtn) responseToggleBtn.textContent = '+';
+                             }, 2000);
+                             loadAndCycleResponses(false); // Reload responses to include the new one
+                        })
+                        .catch(error => {
+                            console.error('Error submitting response:', error);
+                            responseStatusDiv.textContent = 'Submission error. Please try again.';
+                            responseStatusDiv.style.color = '#ff6b6b';
+                        });
+                });
+            }
+            
+            // Handle permission button for iOS-like motion/camera access if needed before AR.js
+            const permissionOverlay = document.getElementById('permission-overlay');
+            const permissionBtn = document.getElementById('permission-btn');
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+            if (isIOS && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+                if(permissionOverlay) permissionOverlay.style.display = 'flex';
+                if(permissionBtn) permissionBtn.addEventListener('click', function() {
+                    DeviceMotionEvent.requestPermission().then(response => {
+                        if (response === 'granted') {
+                            if(typeof DeviceOrientationEvent.requestPermission === 'function') {
+                                DeviceOrientationEvent.requestPermission().then(orientationResponse => {
+                                    if (orientationResponse === 'granted') {
+                                        if(permissionOverlay) permissionOverlay.style.display = 'none';
+                                        // Permissions granted, AR.js should take over
+                                    } else { alert('Device orientation permission denied.'); }
+                                });
+                            } else {
+                                if(permissionOverlay) permissionOverlay.style.display = 'none';
+                            }
+                        } else { alert('Device motion permission denied.'); }
+                    }).catch(console.error);
+                }, { once: true });
+            } else {
+                 if(permissionOverlay) permissionOverlay.style.display = 'none'; // Not iOS or permission not needed this way
+            }
+        });
+        
+        // --- Dynamic Server Responses Logic ---
+        let serverResponses = [];
+        let currentResponseIndex = -1;
+        let responseIntervalId = null;
+        const dynamicResponseTextDisplay = document.getElementById('dynamic-response-text-display');
+
+        function loadAndCycleResponses(isInitialCall = false) {
+            // REPLACE WITH YOUR GOOGLE APPS SCRIPT URL for fetching responses
+            const fetchScriptURL = 'https://script.google.com/macros/s/YOUR_APPS_SCRIPT_ID_HERE/exec?action=getResponses'; 
+            
+            // Default/placeholder responses
+            const defaultResponses = [
+                { name: "Gardener", message: "Seeds of hope grow here." }, 
+                { name: "Neighbor", message: "What a beautiful idea!" },
+                { name: "Visitor", message: "This space has potential." }
+            ];
+
+            fetch(fetchScriptURL)
+                .then(response => {
+                    if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.result === 'success' && data.responses && data.responses.length > 0) {
+                        serverResponses = data.responses.map(r => ({ name: r.name || "Anonymous", message: r.message || ""}));
+                        console.log(`Loaded ${serverResponses.length} responses from server.`);
+                    } else {
+                        serverResponses = defaultResponses;
+                        console.log("No valid responses from server or error, using defaults.");
+                    }
                 })
                 .catch(error => {
-                    console.error('Error:', error);
-                    statusDiv.textContent = 'Network error. Please try again.';
-                    statusDiv.style.color = '#ff6b6b';
+                    console.error('Error loading responses:', error);
+                    serverResponses = defaultResponses; // Fallback to defaults on error
+                })
+                .finally(() => {
+                    if (serverResponses.length > 0) {
+                        if (responseIntervalId) clearInterval(responseIntervalId); // Clear existing interval
+                        if(isInitialCall) showNextResponse(); // Show first immediately
+                        responseIntervalId = setInterval(showNextResponse, 10000); // Cycle every 10s
+                        if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'block';
+                    } else {
+                        if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none';
+                    }
                 });
-            });
-        });
+        }
+
+        function showNextResponse() {
+            if (!serverResponses || serverResponses.length === 0 || !dynamicResponseTextDisplay) return;
+            
+            currentResponseIndex = (currentResponseIndex + 1) % serverResponses.length;
+            const response = serverResponses[currentResponseIndex];
+            
+            dynamicResponseTextDisplay.textContent = `"${response.message}" - ${response.name}`;
+            dynamicResponseTextDisplay.style.opacity = 0;
+            // Simple fade-in
+            setTimeout(() => { dynamicResponseTextDisplay.style.opacity = 1; }, 100);
+        }
+
+
     </script>
 </body>
 </html>
