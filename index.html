@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Why can't this be a community garden? (Location Based v4 - Script Order Fixed)</title>
+    <title>Why can't this be a community garden? (Location Based v5 - Real GPS)</title>
 
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
@@ -25,7 +25,7 @@
         .dynamic-response-display-style { color: #C8FFC5; background-color: rgba(0, 0, 0, 0.65); padding: 8px 12px; border-radius: 8px; text-align: center; font-family: 'Roboto', sans-serif; font-size: 15px; font-weight: 400; pointer-events: auto; max-width: 250px; box-sizing: border-box; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 100; display: none; }
         .controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: space-around; padding: 0 20px; box-sizing: border-box; z-index: 1000; }
         .btn { width: 60px; height: 60px; border-radius: 50%; color: white; border: none; font-family: 'Roboto', sans-serif; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; }
-        #place-btn { background-color: #4CAF50; display: none;}
+        #place-btn { background-color: #4CAF50; display: none;} /* Not actively used in this version */
         #reset-btn { background-color: #f44336; display: none; }
         #response-toggle { background-color: #2196F3; display: none; }
         #response-form-container { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.85); backdrop-filter: blur(5px); border-radius: 15px; padding: 20px; color: white; z-index: 1001; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
@@ -35,11 +35,10 @@
         #response-form-container h3 { margin-top: 0; text-align: center; font-weight: 700; }
         #response-status { margin-top: 12px; text-align: center; font-weight: bold; min-height: 20px; }
         #instructions { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(3px); color: white; padding: 12px 18px; border-radius: 10px; text-align: center; font-size: 16px; z-index: 1000; max-width: 80%;}
-        #permission-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); z-index: 4000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; padding: 20px; }
-        #permission-overlay h2 { font-weight: 700; }
-        #permission-btn { margin-top: 20px; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: 700; cursor: pointer; }
-        #debug-info { position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: #0f0; padding: 8px 12px; border-radius: 5px; font-size: 11px; font-family: monospace; z-index: 2500; display: none; width: calc(100% - 40px); max-height: 150px; overflow-y: auto; }
-        .location-info-style { position: fixed; bottom: 100px; left: 10px; color: white; background: rgba(0, 0, 0, 0.6); padding: 8px 12px; border-radius: 5px; font-family: 'Roboto', sans-serif; font-size: 12px; z-index: 999; }
+        .permission-ui { position: fixed; top: 10px; left: 10px; z-index: 4000; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 8px; font-family: 'Roboto', sans-serif; }
+        .permission-ui button { padding: 8px 12px; font-size: 14px; margin-top: 5px; background-color: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .permission-ui p { margin: 0 0 5px 0; font-size: 13px; }
+        #debug-info { position: fixed; top: 120px; /* Adjusted to avoid overlap */ left: 10px; background: rgba(0,0,0,0.8); color: #0f0; padding: 8px 12px; border-radius: 5px; font-size: 11px; font-family: monospace; z-index: 2500; display: none; width: calc(100% - 40px); max-height: 150px; overflow-y: auto; }
     </style>
 
     <script id="flowerVertexShader" type="x-shader/x-vertex">
@@ -53,12 +52,7 @@
     <script id="flowerFragmentShader" type="x-shader/x-fragment">
         #define PI 3.14159265359
         precision highp float;
-        uniform float u_time; // Global time
-        varying vec2 vUv;
-        varying vec2 vInstanceRandomVec2;
-        varying float vInstanceStemGrowTime;
-        varying float vInstanceFlowerGrowTime;
-
+        uniform float u_time; varying vec2 vUv; varying vec2 vInstanceRandomVec2; varying float vInstanceStemGrowTime; varying float vInstanceFlowerGrowTime;
         vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; } vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
         float snoise(vec2 v) { const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439); vec2 i = floor(v + dot(v, C.yy)); vec2 x0 = v - i + dot(i, C.xx); vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0); vec4 x12 = x0.xyxy + C.xxzz; x12.xy -= i1; i = mod289(i); vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0)); vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0); m = m*m; m = m*m; vec3 x = 2.0 * fract(p * C.www) - 1.0; vec3 h = abs(x) - 0.5; vec3 ox = floor(x + 0.5); vec3 a0 = x - ox; m *= 1.79284291400159 - 0.85373472095314 * (a0*a0 + h*h); vec3 g; g.x = a0.x * x0.x + h.x * x0.y; g.yz = a0.yz * x12.xz + h.yz * x12.yw; return 130.0 * dot(m, g); }
         float easeQuinticInOut(float t) { return t < 0.5 ? 16.0 * t * t * t * t * t : 1.0 + 16.0 * (--t) * t * t * t * t; }
@@ -68,7 +62,7 @@
     </script>
 
     <script>
-        // Helper functions (toRadians, toDegrees, calculateDistance)
+        // Helper functions
         function toRadians(degrees) { return degrees * Math.PI / 180; }
         function toDegrees(radians) { return radians * 180 / Math.PI; }
         function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -83,7 +77,7 @@
             init: function () {
                 const loadingScreen = document.getElementById('loading');
                 const arjsLoaderDisplay = document.querySelector('.arjs-loader-display');
-                if(arjsLoaderDisplay) arjsLoaderDisplay.style.display = 'none';
+                if(arjsLoaderDisplay) arjsLoaderDisplay.style.display = 'none'; // Hide AR.js default
 
                 this.el.sceneEl.addEventListener('arjs-video-loaded', () => console.log('AR.js video loaded'));
                 this.el.sceneEl.addEventListener('arjs-gps-camera-loading', () => {
@@ -91,407 +85,248 @@
                     if(loadingScreen) loadingScreen.style.display = 'flex';
                 });
                 this.el.sceneEl.addEventListener('gps-camera-origin-coord-set', () => {
-                    console.log('AR.js GPS Camera origin coordinates SET. Garden can be shown.');
+                    console.log('AR.js GPS Camera origin coordinates SET. Location is active.');
                     if (loadingScreen && loadingScreen.style.display !== 'none') {
                         loadingScreen.style.display = 'none';
                         console.log('Main loading screen hidden.');
                     }
+                    // Hide manual GPS request UI if it was shown and GPS is now working
+                    const gpsRequestUI = document.getElementById('gps-request-ui');
+                    if (gpsRequestUI) gpsRequestUI.style.display = 'none';
                 });
                 setTimeout(() => {
                     if (loadingScreen && loadingScreen.style.display !== 'none') {
                         loadingScreen.style.display = 'none';
                         console.log('Main loading screen hidden by timeout.');
                     }
-                }, 12000);
+                }, 15000); // Slightly longer timeout
             }
         });
 
         AFRAME.registerComponent('styled-flower-garden', {
-            schema: { /* ... schema same as before ... */
+            schema: {
                 flowerCount: { type: 'number', default: 100 },
                 radius: { type: 'number', default: 3 },
                 minHeight: {type: 'number', default: 0.05},
                 maxHeight: {type: 'number', default: 0.5},
                 groundRadius: {type: 'number', default: 3.05}
             },
-            init: function () { /* ... init logic same as before, ensure AFRAME.THREE is used ... */
-                this.THREE = AFRAME.THREE;
-                this.sceneEl = this.el.sceneEl;
-                this.camera = this.sceneEl.camera;
-                this.clock = new this.THREE.Clock();
-                this.MAX_FLOWERS = this.data.flowerCount;
-                this.currentFlowerCount = 0;
-                this.instanceStemGrowTimes = new Float32Array(this.MAX_FLOWERS);
-                this.instanceFlowerGrowTimes = new Float32Array(this.MAX_FLOWERS);
-                this.instanceRandomVec2s = new Float32Array(this.MAX_FLOWERS * 2);
-                this.instanceStemGrowDuration = new Float32Array(this.MAX_FLOWERS);
-                this.instanceFlowerGrowDuration = new Float32Array(this.MAX_FLOWERS);
-                this.instanceIsBlooming = new Array(this.MAX_FLOWERS).fill(false);
+            init: function () {
+                this.THREE = AFRAME.THREE; this.sceneEl = this.el.sceneEl; this.camera = this.sceneEl.camera; this.clock = new this.THREE.Clock();
+                this.MAX_FLOWERS = this.data.flowerCount; this.currentFlowerCount = 0;
+                this.instanceStemGrowTimes = new Float32Array(this.MAX_FLOWERS); this.instanceFlowerGrowTimes = new Float32Array(this.MAX_FLOWERS);
+                this.instanceRandomVec2s = new Float32Array(this.MAX_FLOWERS * 2); this.instanceStemGrowDuration = new Float32Array(this.MAX_FLOWERS);
+                this.instanceFlowerGrowDuration = new Float32Array(this.MAX_FLOWERS); this.instanceIsBlooming = new Array(this.MAX_FLOWERS).fill(false);
                 this.dummy = new this.THREE.Object3D();
-
-                this.groundCircle = document.createElement('a-circle');
-                this.groundCircle.setAttribute('radius', this.data.groundRadius);
-                this.groundCircle.setAttribute('rotation', '-90 0 0');
-                this.groundCircle.setAttribute('material', 'color: #654321; opacity: 0.7; side: double;');
-                this.groundCircle.setAttribute('position', '0 -0.01 0');
-                this.el.appendChild(this.groundCircle);
-
+                this.groundCircle = document.createElement('a-circle'); this.groundCircle.setAttribute('radius', this.data.groundRadius);
+                this.groundCircle.setAttribute('rotation', '-90 0 0'); this.groundCircle.setAttribute('material', 'color: #654321; opacity: 0.7; side: double;');
+                this.groundCircle.setAttribute('position', '0 -0.01 0'); this.el.appendChild(this.groundCircle);
                 this.initFlowers();
-
-                const textEl = document.createElement('a-text');
-                textEl.setAttribute('value', "Why can't this be a community garden?");
-                textEl.setAttribute('align', 'center');
-                textEl.setAttribute('color', '#FFF');
-                textEl.setAttribute('width', '6');
-                textEl.setAttribute('position', `0 ${this.data.maxHeight + 1.2} 0`);
-                textEl.setAttribute('look-at', '[gps-new-camera]');
-                this.el.appendChild(textEl);
-
+                const textEl = document.createElement('a-text'); textEl.setAttribute('value', "Why can't this be a community garden?");
+                textEl.setAttribute('align', 'center'); textEl.setAttribute('color', '#FFF'); textEl.setAttribute('width', '6');
+                textEl.setAttribute('position', `0 ${this.data.maxHeight + 1.2} 0`); textEl.setAttribute('look-at', '[gps-new-camera]'); this.el.appendChild(textEl);
                 this.el.addEventListener('object3dset', () => {
-                     if (this.el.object3D && this.instancedFlowers) {
-                         this.el.object3D.add(this.instancedFlowers);
-                         console.log('Styled Flower Garden: InstancedMesh for flowers added.');
-                         if(this.el.getAttribute('visible')) {
-                            this.placeFlowers();
-                         }
-                     }
-                 });
+                     if (this.el.object3D && this.instancedFlowers) { this.el.object3D.add(this.instancedFlowers); if(this.el.getAttribute('visible')) { this.placeFlowers(); } }});
                  this.el.addEventListener('componentchanged', (evt) => {
-                    if (evt.detail.name === 'visible') {
-                        if (evt.detail.newData === true && this.instancedFlowers) {
-                            console.log('Styled Flower Garden: Became visible, placing flowers.');
-                            this.placeFlowers();
-                        } else if (evt.detail.newData === false && this.instancedFlowers) {
-                             console.log('Styled Flower Garden: Became hidden, resetting flowers.');
-                            this.resetFlowers();
-                        }
-                    }
-                });
+                    if (evt.detail.name === 'visible') { if (evt.detail.newData === true && this.instancedFlowers) { this.placeFlowers(); } else if (evt.detail.newData === false && this.instancedFlowers) { this.resetFlowers();}}});
             },
-            initFlowers: function () { /* ... initFlowers logic same as before ... */
+            initFlowers: function () {
                 const baseFlowerGeometry = new this.THREE.PlaneGeometry(1.8, 1.8);
-                const baseFlowerMaterial = new this.THREE.ShaderMaterial({
-                    uniforms: { u_time: { value: 0.0 } },
-                    vertexShader: document.getElementById('flowerVertexShader').textContent,
-                    fragmentShader: document.getElementById('flowerFragmentShader').textContent,
-                    transparent: true, side: this.THREE.DoubleSide, depthWrite: false
-                });
-                this.instancedFlowers = new this.THREE.InstancedMesh(baseFlowerGeometry, baseFlowerMaterial, this.MAX_FLOWERS);
-                this.instancedFlowers.instanceMatrix.setUsage(this.THREE.DynamicDrawUsage);
+                const baseFlowerMaterial = new this.THREE.ShaderMaterial({uniforms: { u_time: { value: 0.0 } }, vertexShader: document.getElementById('flowerVertexShader').textContent, fragmentShader: document.getElementById('flowerFragmentShader').textContent, transparent: true, side: this.THREE.DoubleSide, depthWrite: false });
+                this.instancedFlowers = new this.THREE.InstancedMesh(baseFlowerGeometry, baseFlowerMaterial, this.MAX_FLOWERS); this.instancedFlowers.instanceMatrix.setUsage(this.THREE.DynamicDrawUsage);
                 this.instancedFlowers.geometry.setAttribute('instanceRandomVec2', new this.THREE.InstancedBufferAttribute(this.instanceRandomVec2s, 2));
                 this.instancedFlowers.geometry.setAttribute('instanceStemGrowTime', new this.THREE.InstancedBufferAttribute(this.instanceStemGrowTimes, 1));
-                this.instancedFlowers.geometry.setAttribute('instanceFlowerGrowTime', new this.THREE.InstancedBufferAttribute(this.instanceFlowerGrowTimes, 1));
-                this.instancedFlowers.count = 0;
+                this.instancedFlowers.geometry.setAttribute('instanceFlowerGrowTime', new this.THREE.InstancedBufferAttribute(this.instanceFlowerGrowTimes, 1)); this.instancedFlowers.count = 0;
             },
-            placeFlowers: function () { /* ... placeFlowers logic same as before ... */
-                 if (!this.instancedFlowers || !this.el.object3D) {
-                     console.warn("placeFlowers: InstancedMesh or entity object3D not ready.");
-                     if (this.el.object3D && this.instancedFlowers && !this.instancedFlowers.parent) {
-                         this.el.object3D.add(this.instancedFlowers);
-                     }
-                     return;
-                 }
+            placeFlowers: function () {
+                 if (!this.instancedFlowers || !this.el.object3D) { if (this.el.object3D && this.instancedFlowers && !this.instancedFlowers.parent) { this.el.object3D.add(this.instancedFlowers); } return; }
                 if (this.currentFlowerCount > 0) this.resetFlowers();
-
-                const flowerCount = this.MAX_FLOWERS;
-                const spreadRadius = this.data.radius;
-                const minHeight = this.data.minHeight;
-                const maxHeight = this.data.maxHeight;
-
-                this.instanceIsBlooming.fill(false);
-                this.instanceStemGrowTimes.fill(0); this.instanceFlowerGrowTimes.fill(0);
-                this.instanceRandomVec2s.fill(0); this.instanceStemGrowDuration.fill(0); this.instanceFlowerGrowDuration.fill(0);
-
+                const flowerCount = this.MAX_FLOWERS; const spreadRadius = this.data.radius; const minHeight = this.data.minHeight; const maxHeight = this.data.maxHeight;
+                this.instanceIsBlooming.fill(false); this.instanceStemGrowTimes.fill(0); this.instanceFlowerGrowTimes.fill(0); this.instanceRandomVec2s.fill(0); this.instanceStemGrowDuration.fill(0); this.instanceFlowerGrowDuration.fill(0);
                 for (let i = 0; i < flowerCount; i++) {
-                    const angle = Math.random() * Math.PI * 2;
-                    const distance = Math.random() * spreadRadius;
-                    const x = Math.cos(angle) * distance;
-                    const z = Math.sin(angle) * distance;
-                    const y = minHeight + Math.random() * (maxHeight - minHeight);
-                    this.dummy.position.set(x, y, z);
-                    this.dummy.rotation.set(0, Math.random() * Math.PI * 2, 0);
-                    const scaleVariation = 0.6 + Math.random() * 0.8;
-                    this.dummy.scale.set(scaleVariation, scaleVariation, scaleVariation);
-                    this.dummy.updateMatrix();
-                    this.instancedFlowers.setMatrixAt(i, this.dummy.matrix);
-                    this.instanceRandomVec2s[i * 2 + 0] = Math.random(); this.instanceRandomVec2s[i * 2 + 1] = Math.random();
-                    this.instanceStemGrowTimes[i] = 0.0; this.instanceFlowerGrowTimes[i] = 0.0;
-                    this.instanceStemGrowDuration[i] = 1.0; this.instanceFlowerGrowDuration[i] = 2.0;
+                    const angle = Math.random() * Math.PI * 2; const distance = Math.random() * spreadRadius; const x = Math.cos(angle) * distance; const z = Math.sin(angle) * distance; const y = minHeight + Math.random() * (maxHeight - minHeight);
+                    this.dummy.position.set(x, y, z); this.dummy.rotation.set(0, Math.random() * Math.PI * 2, 0); const scaleVariation = 0.6 + Math.random() * 0.8; this.dummy.scale.set(scaleVariation, scaleVariation, scaleVariation); this.dummy.updateMatrix(); this.instancedFlowers.setMatrixAt(i, this.dummy.matrix);
+                    this.instanceRandomVec2s[i * 2 + 0] = Math.random(); this.instanceRandomVec2s[i * 2 + 1] = Math.random(); this.instanceStemGrowTimes[i] = 0.0; this.instanceFlowerGrowTimes[i] = 0.0; this.instanceStemGrowDuration[i] = 1.0; this.instanceFlowerGrowDuration[i] = 2.0;
                     setTimeout(() => { if(this.instanceIsBlooming) this.instanceIsBlooming[i] = true; }, 200 + Math.random() * 3000);
                 }
-                this.instancedFlowers.instanceMatrix.needsUpdate = true;
-                if (this.instancedFlowers.geometry.attributes.instanceRandomVec2) this.instancedFlowers.geometry.attributes.instanceRandomVec2.needsUpdate = true;
-                if (this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true;
-                if (this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
-                this.instancedFlowers.count = flowerCount;
-                this.currentFlowerCount = flowerCount;
-                console.log(`Styled Flower Garden: Placed ${this.currentFlowerCount} flowers within radius ${spreadRadius}m.`);
+                this.instancedFlowers.instanceMatrix.needsUpdate = true; if (this.instancedFlowers.geometry.attributes.instanceRandomVec2) this.instancedFlowers.geometry.attributes.instanceRandomVec2.needsUpdate = true; if (this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true; if (this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
+                this.instancedFlowers.count = flowerCount; this.currentFlowerCount = flowerCount;
             },
-            resetFlowers: function() { /* ... resetFlowers logic same as before ... */
-                if (this.instancedFlowers) {
-                    this.instancedFlowers.count = 0;
-                    if (this.instancedFlowers.instanceMatrix) this.instancedFlowers.instanceMatrix.needsUpdate = true;
-                    if (this.instanceIsBlooming) this.instanceIsBlooming.fill(false);
-                    this.instanceStemGrowTimes.fill(0); this.instanceFlowerGrowTimes.fill(0);
-                    this.currentFlowerCount = 0;
-                    console.log("Styled Flower Garden: Flowers reset.");
-                }
+            resetFlowers: function() {
+                if (this.instancedFlowers) { this.instancedFlowers.count = 0; if (this.instancedFlowers.instanceMatrix) this.instancedFlowers.instanceMatrix.needsUpdate = true; if (this.instanceIsBlooming) this.instanceIsBlooming.fill(false); this.instanceStemGrowTimes.fill(0); this.instanceFlowerGrowTimes.fill(0); this.currentFlowerCount = 0; }
             },
-            tick: function (time, deltaTime) { /* ... tick logic same as before ... */
-                if (!this.instancedFlowers || this.currentFlowerCount === 0 || !this.el.getAttribute('visible')) return;
-                const dt = deltaTime / 1000;
-                const elapsedTime = this.clock.getElapsedTime();
-                if (this.instancedFlowers.material.uniforms.u_time) {
-                    this.instancedFlowers.material.uniforms.u_time.value = elapsedTime;
-                }
+            tick: function (time, deltaTime) {
+                if (!this.instancedFlowers || this.currentFlowerCount === 0 || !this.el.getAttribute('visible')) return; const dt = deltaTime / 1000; const elapsedTime = this.clock.getElapsedTime(); if (this.instancedFlowers.material.uniforms.u_time) { this.instancedFlowers.material.uniforms.u_time.value = elapsedTime; }
                 let needsStemTimeUpdate = false; let needsFlowerTimeUpdate = false; let needsMatrixUpdate = false;
-                for (let i = 0; i < this.currentFlowerCount; i++) {
-                    if (this.instanceIsBlooming && this.instanceIsBlooming[i]) {
-                        let currentStemTime = this.instanceStemGrowTimes[i]; let currentFlowerTime = this.instanceFlowerGrowTimes[i];
-                        const stemDuration = this.instanceStemGrowDuration[i]; const flowerDuration = this.instanceFlowerGrowDuration[i];
-                        if (currentStemTime < stemDuration) {
-                            currentStemTime += dt;
-                            if(this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.setX(i, currentStemTime);
-                            needsStemTimeUpdate = true;
-                        } else if (currentFlowerTime < flowerDuration) {
-                            currentFlowerTime += dt;
-                             if(this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.setX(i, currentFlowerTime);
-                            needsFlowerTimeUpdate = true;
-                        }
-                        this.instanceStemGrowTimes[i] = currentStemTime; this.instanceFlowerGrowTimes[i] = currentFlowerTime;
-                    }
-                }
-                if (needsStemTimeUpdate && this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true;
-                if (needsFlowerTimeUpdate && this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
-                if (this.camera && this.camera.el && this.camera.el.object3D && this.el.object3D) {
-                    const camWorldPos = new this.THREE.Vector3();
-                    this.camera.el.object3D.getWorldPosition(camWorldPos);
-                    const parentWorldMatrix = this.el.object3D.matrixWorld;
-                    const parentInverseWorldMatrix = new this.THREE.Matrix4().copy(parentWorldMatrix).invert();
-                    for (let i = 0; i < this.currentFlowerCount; i++) {
-                        this.instancedFlowers.getMatrixAt(i, this.dummy.matrix);
-                        const localPos = new this.THREE.Vector3(); const localQuat = new this.THREE.Quaternion(); const localScale = new this.THREE.Vector3();
-                        this.dummy.matrix.decompose(localPos, localQuat, localScale);
-                        const instanceWorldPos = localPos.clone().applyMatrix4(parentWorldMatrix);
-                        this.dummy.position.copy(instanceWorldPos); this.dummy.scale.copy(localScale);
-                        this.dummy.lookAt(camWorldPos); this.dummy.updateMatrixWorld(true);
-                        this.dummy.matrix.premultiply(parentInverseWorldMatrix);
-                        this.instancedFlowers.setMatrixAt(i, this.dummy.matrix);
-                        needsMatrixUpdate = true;
-                    }
-                    if (needsMatrixUpdate) this.instancedFlowers.instanceMatrix.needsUpdate = true;
-                }
+                for (let i = 0; i < this.currentFlowerCount; i++) { if (this.instanceIsBlooming && this.instanceIsBlooming[i]) { let currentStemTime = this.instanceStemGrowTimes[i]; let currentFlowerTime = this.instanceFlowerGrowTimes[i]; const stemDuration = this.instanceStemGrowDuration[i]; const flowerDuration = this.instanceFlowerGrowDuration[i]; if (currentStemTime < stemDuration) { currentStemTime += dt; if(this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.setX(i, currentStemTime); needsStemTimeUpdate = true; } else if (currentFlowerTime < flowerDuration) { currentFlowerTime += dt; if(this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.setX(i, currentFlowerTime); needsFlowerTimeUpdate = true; } this.instanceStemGrowTimes[i] = currentStemTime; this.instanceFlowerGrowTimes[i] = currentFlowerTime; } }
+                if (needsStemTimeUpdate && this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true; if (needsFlowerTimeUpdate && this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
+                if (this.camera && this.camera.el && this.camera.el.object3D && this.el.object3D) { const camWorldPos = new this.THREE.Vector3(); this.camera.el.object3D.getWorldPosition(camWorldPos); const parentWorldMatrix = this.el.object3D.matrixWorld; const parentInverseWorldMatrix = new this.THREE.Matrix4().copy(parentWorldMatrix).invert(); for (let i = 0; i < this.currentFlowerCount; i++) { this.instancedFlowers.getMatrixAt(i, this.dummy.matrix); const localPos = new this.THREE.Vector3(); const localQuat = new this.THREE.Quaternion(); const localScale = new this.THREE.Vector3(); this.dummy.matrix.decompose(localPos, localQuat, localScale); const instanceWorldPos = localPos.clone().applyMatrix4(parentWorldMatrix); this.dummy.position.copy(instanceWorldPos); this.dummy.scale.copy(localScale); this.dummy.lookAt(camWorldPos); this.dummy.updateMatrixWorld(true); this.dummy.matrix.premultiply(parentInverseWorldMatrix); this.instancedFlowers.setMatrixAt(i, this.dummy.matrix); needsMatrixUpdate = true; } if (needsMatrixUpdate) this.instancedFlowers.instanceMatrix.needsUpdate = true; }
             }
         });
 
         AFRAME.registerComponent('location-check', {
-            schema: { /* ... schema same as before ... */
-                targetLat: { type: 'number', default: 0 },
-                targetLon: { type: 'number', default: 0 },
-                activationThreshold: { type: 'number', default: 75 },
-                debugElement: {type: 'selector'}
+            schema: {
+                targetLat: { type: 'number', default: 0 }, targetLon: { type: 'number', default: 0 },
+                activationThreshold: { type: 'number', default: 75 }, debugElement: {type: 'selector'}
             },
-            init: function () { /* ... init logic same as before ... */
-                this.gardenEntity = document.getElementById('gps-garden');
-                this.mainMessageDisplay = document.getElementById('main-message-display');
-                this.dynamicResponseDisplay = document.getElementById('dynamic-response-text-display');
-                this.responseToggleBtn = document.getElementById('response-toggle');
-                this.resetBtn = document.getElementById('reset-btn');
-                this.instructionsDiv = document.getElementById('instructions');
-                this.isGardenActive = false;
-                if (!this.gardenEntity) { console.error("Location Check: gps-garden entity not found!"); return; }
-                this.debugEl = this.data.debugElement;
-                if (this.debugEl) this.debugEl.style.display = 'block';
-                console.log(`Location Check: Target ${this.data.targetLat}, ${this.data.targetLon}, Activation Threshold: ${this.data.activationThreshold}m`);
+            init: function () {
+                this.gardenEntity = document.getElementById('gps-garden'); this.mainMessageDisplay = document.getElementById('main-message-display');
+                this.dynamicResponseDisplay = document.getElementById('dynamic-response-text-display'); this.responseToggleBtn = document.getElementById('response-toggle');
+                this.resetBtn = document.getElementById('reset-btn'); this.instructionsDiv = document.getElementById('instructions');
+                this.isGardenActive = false; this.wasReset = false;
+                if (!this.gardenEntity) { console.error("LC: gps-garden entity not found!"); return; }
+                this.debugEl = this.data.debugElement; if (this.debugEl) this.debugEl.style.display = 'block';
+                console.log(`LC: Target ${this.data.targetLat}, ${this.data.targetLon}, Activation: ${this.data.activationThreshold}m`);
+
                 this.gpsUpdateListener = (event) => {
-                    if (this.isGardenActive && this.gardenEntity.getAttribute('visible')) {
-                        if (this.debugEl && event.detail && event.detail.position) {
-                             const currentLat = event.detail.position.latitude;
-                             const currentLon = event.detail.position.longitude;
-                             const distance = calculateDistance(currentLat, currentLon, this.data.targetLat, this.data.targetLon);
-                             this.debugEl.innerHTML = `Dist: ${distance.toFixed(1)}m. Garden Active.`;
-                        }
-                        return;
+                    if (this.isGardenActive && this.gardenEntity.getAttribute('visible') && !this.wasReset) {
+                        if (this.debugEl && event.detail && event.detail.position) { const cLat = event.detail.position.latitude; const cLon = event.detail.position.longitude; const dist = calculateDistance(cLat, cLon, this.data.targetLat, this.data.targetLon); this.debugEl.innerHTML = `Dist: ${dist.toFixed(1)}m. Garden Active.`; } return;
                     }
-                    if (!event.detail || !event.detail.position) {
-                        console.warn('Location Check: gps-camera-update-position event missing details.');
-                        return;
-                    }
-                    const currentLat = event.detail.position.latitude;
-                    const currentLon = event.detail.position.longitude;
+                    if (!event.detail || !event.detail.position) { console.warn('LC: GPS event missing position.'); if (this.debugEl) this.debugEl.innerHTML = 'GPS event, no position.'; return; }
+                    const currentLat = event.detail.position.latitude; const currentLon = event.detail.position.longitude;
                     const distance = calculateDistance(currentLat, currentLon, this.data.targetLat, this.data.targetLon);
-                    if (this.debugEl) {
-                        this.debugEl.innerHTML = `Current: ${currentLat.toFixed(6)}, ${currentLon.toFixed(6)}<br>Target: ${this.data.targetLat.toFixed(6)}, ${this.data.targetLon.toFixed(6)}<br>Distance: ${distance.toFixed(1)}m / ${this.data.activationThreshold}m`;
-                    }
-                    if (!this.isGardenActive && distance < this.data.activationThreshold || (!this.isGardenActive && this.wasReset)) {
-                         this.isGardenActive = true;
+                    if (this.debugEl) { this.debugEl.innerHTML = `Curr: ${currentLat.toFixed(5)},${currentLon.toFixed(5)}<br>Tgt: ${this.data.targetLat.toFixed(5)},${this.data.targetLon.toFixed(5)}<br>Dist: ${distance.toFixed(1)}m / Th: ${this.data.activationThreshold}m`; }
+
+                    if ((!this.isGardenActive && distance < this.data.activationThreshold) || (this.wasReset && distance < this.data.activationThreshold)) {
+                         this.isGardenActive = true; this.wasReset = false;
                          this.gardenEntity.setAttribute('visible', true);
-                         if(this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'block';
-                         if(this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'block';
-                         if(this.responseToggleBtn) this.responseToggleBtn.style.display = 'flex';
-                         if(this.resetBtn) this.resetBtn.style.display = 'flex';
+                         if(this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'block'; if(this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'block';
+                         if(this.responseToggleBtn) this.responseToggleBtn.style.display = 'flex'; if(this.resetBtn) this.resetBtn.style.display = 'flex';
                          if(this.instructionsDiv) this.instructionsDiv.style.display = 'none';
-                         loadAndCycleResponses(true);
-                         console.log("Location Check: GPS active and within initial range. Garden is now VISIBLE and will stay visible.");
-                         this.wasReset = false;
+                         loadAndCycleResponses(true); console.log("LC: GPS active & in range. Garden VISIBLE and will stay.");
+                         const gpsRequestUI = document.getElementById('gps-request-ui'); if (gpsRequestUI) gpsRequestUI.style.display = 'none'; // Hide manual request UI
                     }
                 };
                 window.addEventListener('gps-camera-update-position', this.gpsUpdateListener);
-                this.wasReset = false;
             },
-            remove: function() { /* ... remove logic same as before ... */
-                window.removeEventListener('gps-camera-update-position', this.gpsUpdateListener);
-            }
+            remove: function() { window.removeEventListener('gps-camera-update-position', this.gpsUpdateListener); }
         });
 
-        // --- Global UI Event Listeners & Functions ---
-        // (These are called after the DOM is loaded, so their position here is fine)
         document.addEventListener('DOMContentLoaded', function() {
-            const responseToggleBtn = document.getElementById('response-toggle');
-            const responseFormContainer = document.getElementById('response-form-container');
-            const gardenResponseForm = document.getElementById('garden-response-form-actual');
-            const responseStatusDiv = document.getElementById('response-status');
-            const resetBtn = document.getElementById('reset-btn');
-            const gardenEntity = document.getElementById('gps-garden');
-            const instructionsDiv = document.getElementById('instructions');
-            const mainMessageDisplay = document.getElementById('main-message-display');
+            const responseToggleBtn = document.getElementById('response-toggle'); const responseFormContainer = document.getElementById('response-form-container');
+            const gardenResponseForm = document.getElementById('garden-response-form-actual'); const responseStatusDiv = document.getElementById('response-status');
+            const resetBtn = document.getElementById('reset-btn'); const gardenEntity = document.getElementById('gps-garden');
+            const instructionsDiv = document.getElementById('instructions'); const mainMessageDisplay = document.getElementById('main-message-display');
             const dynamicResponseTextDisplay = document.getElementById('dynamic-response-text-display');
+            const requestGpsBtn = document.getElementById('request-gps-btn'); const gpsStatusMsg = document.getElementById('gps-status-msg');
+            const gpsRequestUI = document.getElementById('gps-request-ui');
 
-            if (responseToggleBtn && responseFormContainer) { /* ... listener same ... */
-                responseToggleBtn.addEventListener('click', function () {
-                    const isFormVisible = responseFormContainer.style.display === 'block';
-                    responseFormContainer.style.display = isFormVisible ? 'none' : 'block';
-                    responseToggleBtn.textContent = isFormVisible ? '+' : '✕';
+            // Show GPS request UI initially if browser supports geolocation
+            if (navigator.geolocation && gpsRequestUI) {
+                // Check current permission status
+                navigator.permissions.query({name:'geolocation'}).then(function(result) {
+                    if (result.state === 'granted') {
+                        gpsStatusMsg.textContent = 'Location permission already granted.';
+                        setTimeout(() => { if (gpsRequestUI) gpsRequestUI.style.display = 'none'; }, 3000);
+                    } else if (result.state === 'prompt') {
+                        gpsStatusMsg.textContent = 'Click button to request location.';
+                        if (gpsRequestUI) gpsRequestUI.style.display = 'block';
+                    } else if (result.state === 'denied') {
+                        gpsStatusMsg.textContent = 'Location permission denied. Please enable in browser/site settings.';
+                        if (gpsRequestUI) gpsRequestUI.style.display = 'block'; // Still show button, but it might not work
+                        if (requestGpsBtn) requestGpsBtn.disabled = true;
+                    }
+                });
+            } else if (gpsRequestUI) {
+                gpsStatusMsg.textContent = 'Geolocation not supported by this browser.';
+                 if (requestGpsBtn) requestGpsBtn.disabled = true;
+            }
+
+
+            if (requestGpsBtn && gpsStatusMsg) {
+                requestGpsBtn.addEventListener('click', function() {
+                    gpsStatusMsg.textContent = 'Requesting location...';
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            function(position) {
+                                gpsStatusMsg.textContent = 'Success! Lat: ' + position.coords.latitude.toFixed(5) + ', Lon: ' + position.coords.longitude.toFixed(5);
+                                console.log('Manual GPS Request Success:', position);
+                                // AR.js should pick this up automatically on its next interval or via 'gps-camera-update-position' event.
+                                // Hide this UI once successfully obtained.
+                                if (gpsRequestUI) setTimeout(() => { gpsRequestUI.style.display = 'none'; }, 2000);
+                            },
+                            function(error) {
+                                let errorMsg = 'Error: ';
+                                switch(error.code) {
+                                    case error.PERMISSION_DENIED: errorMsg += "User denied location request."; break;
+                                    case error.POSITION_UNAVAILABLE: errorMsg += "Location info unavailable."; break;
+                                    case error.TIMEOUT: errorMsg += "Location request timed out."; break;
+                                    default: errorMsg += "Unknown location error."; break;
+                                }
+                                gpsStatusMsg.textContent = errorMsg; console.error('Manual GPS Error:', errorMsg, error);
+                            },
+                            { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+                        );
+                    } else { gpsStatusMsg.textContent = "Geolocation not supported."; }
                 });
             }
-            if (resetBtn && gardenEntity) { /* ... listener same ... */
+
+            if (responseToggleBtn && responseFormContainer) { responseToggleBtn.addEventListener('click', function () { const isFormVisible = responseFormContainer.style.display === 'block'; responseFormContainer.style.display = isFormVisible ? 'none' : 'block'; responseToggleBtn.textContent = isFormVisible ? '+' : '✕'; }); }
+            if (resetBtn && gardenEntity) {
                 resetBtn.addEventListener('click', function() {
-                    gardenEntity.setAttribute('visible', false);
-                    if(mainMessageDisplay) mainMessageDisplay.style.display = 'none';
-                    if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none';
-                    if(responseToggleBtn) responseToggleBtn.style.display = 'none';
-                    if(responseFormContainer) responseFormContainer.style.display = 'none';
-                    if(responseToggleBtn) responseToggleBtn.textContent = '+';
-                    if(resetBtn) resetBtn.style.display = 'none';
-                    if(instructionsDiv) instructionsDiv.style.display = 'block';
-                    const locCheckComponentInstance = gardenEntity.components['location-check'];
-                    if (locCheckComponentInstance) {
-                        locCheckComponentInstance.isGardenActive = false;
-                        locCheckComponentInstance.wasReset = true;
+                    gardenEntity.setAttribute('visible', false); if(mainMessageDisplay) mainMessageDisplay.style.display = 'none'; if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none'; if(responseToggleBtn) responseToggleBtn.style.display = 'none'; if(responseFormContainer) responseFormContainer.style.display = 'none'; if(responseToggleBtn) responseToggleBtn.textContent = '+'; if(resetBtn) resetBtn.style.display = 'none'; if(instructionsDiv) instructionsDiv.style.display = 'block';
+                    const locCheckComp = gardenEntity.components['location-check']; if (locCheckComp) { locCheckComp.isGardenActive = false; locCheckComp.wasReset = true; }
+                    if (gpsRequestUI && navigator.geolocation) { // Show GPS request UI again on reset if it was hidden
+                         navigator.permissions.query({name:'geolocation'}).then(function(result) {
+                            if (result.state !== 'granted') gpsRequestUI.style.display = 'block';
+                         });
                     }
-                    console.log("Reset Button: Garden hidden. Ready for re-activation.");
                 });
             }
-             if (gardenResponseForm) { /* ... listener same, remember to REPLACE SCRIPT URL ... */
+             if (gardenResponseForm) {
                 gardenResponseForm.addEventListener('submit', function(e) {
-                    e.preventDefault();
-                    const name = gardenResponseForm.name.value;
-                    const message = gardenResponseForm.message.value;
-                    const timestamp = new Date().toLocaleString();
-                    if (!name || !message) {
-                        responseStatusDiv.textContent = 'Please fill out all fields.';
-                        responseStatusDiv.style.color = '#ff6b6b'; return;
-                    }
+                    e.preventDefault(); const name = gardenResponseForm.name.value; const message = gardenResponseForm.message.value; const timestamp = new Date().toLocaleString();
+                    if (!name || !message) { responseStatusDiv.textContent = 'Please fill all fields.'; responseStatusDiv.style.color = '#ff6b6b'; return; }
                     responseStatusDiv.textContent = 'Submitting...'; responseStatusDiv.style.color = 'white';
                     const scriptURL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE_FOR_SUBMIT'; // <<< REPLACE
-                    const formData = new FormData();
-                    formData.append('name', name); formData.append('message', message);
-                    formData.append('timestamp', timestamp); formData.append('action', 'submitResponse');
+                    const formData = new FormData(); formData.append('name', name); formData.append('message', message); formData.append('timestamp', timestamp); formData.append('action', 'submitResponse');
                     fetch(scriptURL, { method: 'POST', body: formData, mode: 'no-cors' })
-                        .then(() => {
-                            responseStatusDiv.textContent = 'Thank you for sharing!';
-                            responseStatusDiv.style.color = '#4CAF50'; gardenResponseForm.reset();
-                            setTimeout(() => {
-                                if(responseFormContainer) responseFormContainer.style.display = 'none';
-                                if(responseToggleBtn) responseToggleBtn.textContent = '+';
-                             }, 2000);
-                             loadAndCycleResponses(false);
-                        })
-                        .catch(error => {
-                            console.error('Error submitting response:', error);
-                            responseStatusDiv.textContent = 'Submission error. Please try again.';
-                            responseStatusDiv.style.color = '#ff6b6b';
-                        });
+                        .then(() => { responseStatusDiv.textContent = 'Thank you!'; responseStatusDiv.style.color = '#4CAF50'; gardenResponseForm.reset(); setTimeout(() => { if(responseFormContainer) responseFormContainer.style.display = 'none'; if(responseToggleBtn) responseToggleBtn.textContent = '+'; }, 2000); loadAndCycleResponses(false); })
+                        .catch(error => { console.error('Submit Error:', error); responseStatusDiv.textContent = 'Submit error.'; responseStatusDiv.style.color = '#ff6b6b'; });
                 });
             }
-            const permissionOverlay = document.getElementById('permission-overlay'); /* ... listener same ... */
-            const permissionBtn = document.getElementById('permission-btn');
+            const permissionOverlay = document.getElementById('permission-overlay'); const permissionBtn = document.getElementById('permission-btn');
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
             if (isIOS && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                  if(permissionOverlay) permissionOverlay.style.display = 'flex';
-                 if(permissionBtn) permissionBtn.addEventListener('click', function() {
-                     DeviceMotionEvent.requestPermission().then(response => {
-                         if (response === 'granted') {
-                             if(typeof DeviceOrientationEvent.requestPermission === 'function') {
-                                 DeviceOrientationEvent.requestPermission().then(orientationResponse => {
-                                     if (orientationResponse === 'granted') {
-                                         if(permissionOverlay) permissionOverlay.style.display = 'none';
-                                     } else { alert('Device orientation permission denied.'); }
-                                 });
-                             } else {
-                                 if(permissionOverlay) permissionOverlay.style.display = 'none';
-                             }
-                         } else { alert('Device motion permission denied.'); }
-                     }).catch(console.error);
-                 }, { once: true });
-             } else { if(permissionOverlay) permissionOverlay.style.display = 'none'; }
+                 if(permissionBtn) permissionBtn.addEventListener('click', function() { DeviceMotionEvent.requestPermission().then(response => { if (response === 'granted') { if(typeof DeviceOrientationEvent.requestPermission === 'function') { DeviceOrientationEvent.requestPermission().then(orientationResponse => { if (orientationResponse === 'granted') { if(permissionOverlay) permissionOverlay.style.display = 'none'; } else { alert('Orientation permission denied.'); } }); } else { if(permissionOverlay) permissionOverlay.style.display = 'none'; } } else { alert('Motion permission denied.'); } }).catch(console.error); }, { once: true });
+            } else { if(permissionOverlay) permissionOverlay.style.display = 'none'; }
         });
 
         let serverResponses = []; let currentResponseIndex = -1; let responseIntervalId = null;
         const dynamicResponseTextDisplayGlobal = document.getElementById('dynamic-response-text-display');
-
-        function loadAndCycleResponses(isInitialCall = false) { /* ... function same, remember to REPLACE SCRIPT URL ... */
+        function loadAndCycleResponses(isInitialCall = false) {
             const fetchScriptURL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE_FOR_GET'; // <<< REPLACE
-            const defaultResponses = [
-                { name: "Gardener", message: "Seeds of hope grow here." },
-                { name: "Neighbor", message: "What a beautiful idea!" },
-                { name: "Visitor", message: "This space has potential." }
-            ];
+            const defaultResponses = [ { name: "Gardener", message: "Seeds of hope." }, { name: "Neighbor", message: "Beautiful idea!" }];
             fetch(fetchScriptURL)
-                .then(response => { if (!response.ok) { throw new Error('Network response was not ok'); } return response.json();})
-                .then(data => {
-                    if (data.result === 'success' && data.responses && data.responses.length > 0) {
-                        serverResponses = data.responses.map(r => ({ name: r.name || "Anonymous", message: r.message || ""}));
-                    } else { serverResponses = defaultResponses; }
-                })
-                .catch(error => { console.error('Error loading responses:', error); serverResponses = defaultResponses; })
-                .finally(() => {
-                    if (serverResponses.length > 0) {
-                        if (responseIntervalId) clearInterval(responseIntervalId);
-                        if(isInitialCall) showNextResponse();
-                        responseIntervalId = setInterval(showNextResponse, 10000);
-                        if(dynamicResponseTextDisplayGlobal) dynamicResponseTextDisplayGlobal.style.display = 'block';
-                    } else { if(dynamicResponseTextDisplayGlobal) dynamicResponseTextDisplayGlobal.style.display = 'none'; }
-                });
+                .then(response => { if (!response.ok) { throw new Error('Network issue'); } return response.json();})
+                .then(data => { if (data.result === 'success' && data.responses && data.responses.length > 0) { serverResponses = data.responses.map(r => ({ name: r.name || "Anon", message: r.message || ""})); } else { serverResponses = defaultResponses; } })
+                .catch(error => { console.error('Load Resp Error:', error); serverResponses = defaultResponses; })
+                .finally(() => { if (serverResponses.length > 0) { if (responseIntervalId) clearInterval(responseIntervalId); if(isInitialCall) showNextResponse(); responseIntervalId = setInterval(showNextResponse, 10000); if(dynamicResponseTextDisplayGlobal) dynamicResponseTextDisplayGlobal.style.display = 'block'; } else { if(dynamicResponseTextDisplayGlobal) dynamicResponseTextDisplayGlobal.style.display = 'none'; } });
         }
-        function showNextResponse() { /* ... function same ... */
-             if (!serverResponses || serverResponses.length === 0 || !dynamicResponseTextDisplayGlobal) return;
-            currentResponseIndex = (currentResponseIndex + 1) % serverResponses.length;
-            const response = serverResponses[currentResponseIndex];
-            dynamicResponseTextDisplayGlobal.textContent = `"${response.message}" - ${response.name}`;
-            dynamicResponseTextDisplayGlobal.style.opacity = 0;
-            setTimeout(() => { dynamicResponseTextDisplayGlobal.style.opacity = 1; }, 100);
+        function showNextResponse() {
+             if (!serverResponses || serverResponses.length === 0 || !dynamicResponseTextDisplayGlobal) return; currentResponseIndex = (currentResponseIndex + 1) % serverResponses.length; const response = serverResponses[currentResponseIndex];
+            dynamicResponseTextDisplayGlobal.textContent = `"${response.message}" - ${response.name}`; dynamicResponseTextDisplayGlobal.style.opacity = 0; setTimeout(() => { dynamicResponseTextDisplayGlobal.style.opacity = 1; }, 100);
         }
     </script>
 </head>
-
 <body>
     <div id="loading">
         <h1>Why can't...?</h1>
-        <p>Initializing garden experience...</p>
-         <p style="font-size: 0.8em; margin-top: 20px;">(Ensure you allow Camera and Location access and are using HTTPS)</p>
+        <p>Initializing AR... Waiting for Location Access...</p>
+        <p style="font-size: 0.8em; margin-top: 20px;">(Ensure HTTPS, and grant Camera & Location permissions when prompted. For best results, be outdoors.)</p>
     </div>
-    <div class="arjs-loader-display">
-        <p>Starting AR... Requesting permissions...</p>
+    <div class="arjs-loader-display"><p>Starting AR subsystem...</p></div>
+
+    <div id="gps-request-ui" class="permission-ui" style="display: none;"> <p id="gps-status-msg">This experience needs your location.</p>
+        <button id="request-gps-btn">Allow Location Access</button>
     </div>
-    <div id="permission-overlay">
-         <h2>Permissions Required</h2>
-         <p>This AR experience needs access to device motion sensors.</p>
+    <div id="permission-overlay" class="permission-ui" style="top: 80px; display:none;"> <h2>Motion Sensors</h2>
+         <p>Enable motion sensors to look around.</p>
          <button id="permission-btn">Allow Motion Sensors</button>
     </div>
-    <div id="main-message-display" class="message-container-style" style="display: none;">
-        <p>Why can't this be a community garden?</p>
-    </div>
+
+    <div id="main-message-display" class="message-container-style" style="display: none;"><p>Why can't this be a community garden?</p></div>
     <div id="dynamic-response-text-display" class="dynamic-response-display-style"></div>
     <div id="instructions">Point your camera around. The garden will appear if your GPS is active.</div>
     <div class="controls">
@@ -501,10 +336,8 @@
     <div id="response-form-container">
         <h3>Share Your Thoughts</h3>
         <form id="garden-response-form-actual">
-            <label for="name">Your Name:</label>
-            <input type="text" id="name" name="name" placeholder="e.g., Alex P." required>
-            <label for="form-message">Why can't this be a community garden?</label>
-            <textarea id="form-message" name="message" placeholder="Your ideas..." required></textarea>
+            <label for="name">Your Name:</label><input type="text" id="name" name="name" placeholder="e.g., Alex P." required>
+            <label for="form-message">Why can't this be a community garden?</label><textarea id="form-message" name="message" placeholder="Your ideas..." required></textarea>
             <button type="submit">Submit Idea</button>
         </form>
         <div id="response-status"></div>
@@ -513,28 +346,20 @@
 
     <a-scene
         id="ar-scene"
-        vr-mode-ui="enabled: false"
-        embedded
+        vr-mode-ui="enabled: false" embedded
         renderer="logarithmicDepthBuffer: true; colorManagement: true; physicallyCorrectLights: true;"
-        arjs="
-            sourceType: webcam;
-            trackingMethod: best;
-            debugUIEnabled: false;
-            detectionMode: mono_and_matrix;
-            matrixCodeType: 3x3;
-            sourceWidth: 1280; sourceHeight: 960;
-            displayWidth: 1280; displayHeight: 960;"
-        location-check="targetLat: 35.995666; targetLon: -78.910711; activationThreshold: 75; debugElement: #debug-info"
+        arjs="sourceType: webcam; trackingMethod: best; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3; sourceWidth: 1280; sourceHeight: 960; displayWidth: 1280; displayHeight: 960;"
+        location-check="targetLat: 35.995667; targetLon: -78.910722; activationThreshold: 75; debugElement: #debug-info"
         loading-screen-manager>
 
         <a-entity id="gps-garden"
-            gps-projected-entity-place="latitude: 35.995666; longitude: -78.910711;"
+            gps-projected-entity-place="latitude: 35.995667; longitude: -78.910722;"
             visible="false"
             styled-flower-garden="flowerCount: 150; radius: 3; groundRadius: 3.05;">
         </a-entity>
 
-        <a-camera gps-new-camera="gpsMinDistance: 5; gpsTimeInterval: 1000; simulateLatitude: 35.995666; simulateLongitude: -78.910711;"
+        <a-camera gps-new-camera="gpsMinDistance: 5; gpsTimeInterval: 1000;"
                   rotation-reader></a-camera>
     </a-scene>
-    </body>
+</body>
 </html>
