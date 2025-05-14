@@ -3,10 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Why can't this be a community garden? (Location Based v2)</title>
+    <title>Why can't this be a community garden? (Location Based v3)</title>
 
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Gwendolyn:wght@700&family=Roboto:wght@400;700&display=swap"
@@ -24,18 +25,18 @@
         .dynamic-response-display-style { color: #C8FFC5; background-color: rgba(0, 0, 0, 0.65); padding: 8px 12px; border-radius: 8px; text-align: center; font-family: 'Roboto', sans-serif; font-size: 15px; font-weight: 400; pointer-events: auto; max-width: 250px; box-sizing: border-box; text-shadow: 1px 1px 2px rgba(0,0,0,0.4); position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%); z-index: 100; display: none; }
         .controls { position: fixed; bottom: 20px; width: 100%; display: flex; justify-content: space-around; padding: 0 20px; box-sizing: border-box; z-index: 1000; }
         .btn { width: 60px; height: 60px; border-radius: 50%; color: white; border: none; font-family: 'Roboto', sans-serif; font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.4); cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; }
-        #place-btn { background-color: #4CAF50; display: none;} 
+        #place-btn { background-color: #4CAF50; display: none;}
         #reset-btn { background-color: #f44336; display: none; }
         #response-toggle { background-color: #2196F3; display: none; }
         #response-form-container { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; background: rgba(20, 20, 20, 0.85); backdrop-filter: blur(5px); border-radius: 15px; padding: 20px; color: white; z-index: 1001; display: none; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         #response-form-container input, #response-form-container textarea { width: calc(100% - 20px); padding: 10px; margin: 8px 0 12px; border: 1px solid #555; border-radius: 5px; background: rgba(255, 255, 255, 0.1); color: white; font-size: 16px; }
-        #response-form-container textarea { height: 80px; resize: none; } 
+        #response-form-container textarea { height: 80px; resize: none; }
         #response-form-container button { background: #4CAF50; color: white; border: none; padding: 12px 18px; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; font-size: 16px; }
-        #response-form-container h3 { margin-top: 0; text-align: center; font-weight: 700; } 
+        #response-form-container h3 { margin-top: 0; text-align: center; font-weight: 700; }
         #response-status { margin-top: 12px; text-align: center; font-weight: bold; min-height: 20px; }
         #instructions { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(3px); color: white; padding: 12px 18px; border-radius: 10px; text-align: center; font-size: 16px; z-index: 1000; max-width: 80%;}
         #permission-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); z-index: 4000; display: none; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; padding: 20px; }
-        #permission-overlay h2 { font-weight: 700; } 
+        #permission-overlay h2 { font-weight: 700; }
         #permission-btn { margin-top: 20px; padding: 12px 24px; background-color: #4CAF50; color: white; border: none; border-radius: 30px; font-size: 18px; font-weight: 700; cursor: pointer; }
         #debug-info { position: fixed; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: #0f0; padding: 8px 12px; border-radius: 5px; font-size: 11px; font-family: monospace; z-index: 2500; display: none; width: calc(100% - 40px); max-height: 150px; overflow-y: auto; }
         .location-info-style { position: fixed; bottom: 100px; left: 10px; color: white; background: rgba(0, 0, 0, 0.6); padding: 8px 12px; border-radius: 5px; font-family: 'Roboto', sans-serif; font-size: 12px; z-index: 999; }
@@ -73,22 +74,19 @@
         <p>Initializing garden experience...</p>
          <p style="font-size: 0.8em; margin-top: 20px;">(Ensure you allow Camera and Location access and are using HTTPS)</p>
     </div>
-
     <div class="arjs-loader-display">
         <p>Starting AR... Requesting permissions...</p>
     </div>
-
     <div id="permission-overlay">
          <h2>Permissions Required</h2>
          <p>This AR experience needs access to device motion sensors.</p>
          <button id="permission-btn">Allow Motion Sensors</button>
     </div>
-
     <div id="main-message-display" class="message-container-style" style="display: none;">
         <p>Why can't this be a community garden?</p>
     </div>
     <div id="dynamic-response-text-display" class="dynamic-response-display-style"></div>
-    <div id="instructions">Point your camera around. The garden will appear if you are near the location.</div>
+    <div id="instructions">Point your camera around. The garden will appear if your GPS is active.</div>
     <div class="controls">
         <button id="response-toggle" class="btn" title="Share Thoughts">+</button>
         <button id="reset-btn" class="btn" title="Hide Garden">↺</button>
@@ -113,92 +111,65 @@
         renderer="logarithmicDepthBuffer: true; colorManagement: true; physicallyCorrectLights: true;"
         arjs="
             sourceType: webcam;
-            trackingMethod: best; 
+            trackingMethod: best;
             debugUIEnabled: false;
             detectionMode: mono_and_matrix;
             matrixCodeType: 3x3;
             sourceWidth: 1280; sourceHeight: 960;
             displayWidth: 1280; displayHeight: 960;"
-        location-check="targetLat: 35.995666; targetLon: -78.910711; threshold: 50; debugElement: #debug-info"
-        loading-screen-manager>
+        location-check="targetLat: 35.995666; targetLon: -78.910711; activationThreshold: 75; debugElement: #debug-info" loading-screen-manager>
 
         <a-entity id="gps-garden"
-            gps-projected-entity-place="latitude: 35.996417; longitude: -78.909944;" /* REPLACE WITH YOUR TARGET COORDS */
-            visible="false"
-            styled-flower-garden="flowerCount: 150; radius: 10;">
+            gps-projected-entity-place="latitude: 35.995666; longitude: -78.910711;" visible="false"
+            styled-flower-garden="flowerCount: 150; radius: 3; groundRadius: 3.05;">
         </a-entity>
 
-        <a-camera gps-new-camera="gpsMinDistance: 5; gpsTimeInterval: 1000" rotation-reader></a-camera>
+        <a-camera gps-new-camera="gpsMinDistance: 5; gpsTimeInterval: 1000; simulateLatitude: 35.995666; simulateLongitude: -78.910711;" rotation-reader></a-camera>
     </a-scene>
 
     <script>
-        // Helper functions for distance calculation (remain the same)
-        function toRadians(degrees) { return degrees * Math.PI / 180; }
-        function toDegrees(radians) { return radians * 180 / Math.PI; }
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; // Earth's radius in meters
-            const φ1 = toRadians(lat1); const φ2 = toRadians(lat2);
-            const Δφ = toRadians(lat2 - lat1); const Δλ = toRadians(lon2 - lon1);
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c; // Distance in meters
-        }
+        // Helper functions (toRadians, toDegrees, calculateDistance) remain the same
 
-        // Loading Screen Manager Component (remains the same)
         AFRAME.registerComponent('loading-screen-manager', {
             init: function () {
                 const loadingScreen = document.getElementById('loading');
-                const arjsLoaderDisplay = document.querySelector('.arjs-loader-display'); 
-                
-                if(arjsLoaderDisplay) arjsLoaderDisplay.style.display = 'none'; // Hide AR.js default initially
+                const arjsLoaderDisplay = document.querySelector('.arjs-loader-display');
+                if(arjsLoaderDisplay) arjsLoaderDisplay.style.display = 'none';
 
-                this.el.sceneEl.addEventListener('arjs-video-loaded', () => {
-                    console.log('AR.js video loaded');
-                     // Sometimes good to hide loading here if GPS isn't needed immediately
-                    if (loadingScreen && loadingScreen.style.display !== 'none') {
-                       // loadingScreen.style.display = 'none'; // Uncomment if preferred
-                       // console.log('Main loading screen hidden on video load.');
-                    }
-                });
+                this.el.sceneEl.addEventListener('arjs-video-loaded', () => console.log('AR.js video loaded'));
                 this.el.sceneEl.addEventListener('arjs-gps-camera-loading', () => {
                     console.log('AR.js GPS Camera loading');
-                    if(loadingScreen) loadingScreen.style.display = 'flex'; // Ensure loading is visible
+                    if(loadingScreen) loadingScreen.style.display = 'flex';
                 });
-                 // UPDATE: Listen to gps-camera-origin-coord-set for location init confirmation
                 this.el.sceneEl.addEventListener('gps-camera-origin-coord-set', () => {
-                    console.log('AR.js GPS Camera origin coordinates SET');
+                    console.log('AR.js GPS Camera origin coordinates SET. Garden can be shown.');
                     if (loadingScreen && loadingScreen.style.display !== 'none') {
                         loadingScreen.style.display = 'none';
                         console.log('Main loading screen hidden.');
                     }
                 });
-                 // Fallback - keep timeout
                 setTimeout(() => {
                     if (loadingScreen && loadingScreen.style.display !== 'none') {
                         loadingScreen.style.display = 'none';
                         console.log('Main loading screen hidden by timeout.');
                     }
-                }, 10000); // Extended timeout slightly
+                }, 12000);
             }
         });
 
-
-        // Styled Flower Garden Component (UPDATED TO USE AFRAME.THREE)
         AFRAME.registerComponent('styled-flower-garden', {
             schema: {
                 flowerCount: { type: 'number', default: 100 },
-                radius: { type: 'number', default: 15 },
-                minHeight: {type: 'number', default: -1.0},
-                maxHeight: {type: 'number', default: 0.5}
+                radius: { type: 'number', default: 3 },
+                minHeight: {type: 'number', default: 0.05},
+                maxHeight: {type: 'number', default: 0.5},
+                groundRadius: {type: 'number', default: 3.05}
             },
-
             init: function () {
-                // Use AFRAME.THREE namespace
                 this.THREE = AFRAME.THREE;
                 this.sceneEl = this.el.sceneEl;
                 this.camera = this.sceneEl.camera;
                 this.clock = new this.THREE.Clock();
-
                 this.MAX_FLOWERS = this.data.flowerCount;
                 this.currentFlowerCount = 0;
                 this.instanceStemGrowTimes = new Float32Array(this.MAX_FLOWERS);
@@ -209,31 +180,33 @@
                 this.instanceIsBlooming = new Array(this.MAX_FLOWERS).fill(false);
                 this.dummy = new this.THREE.Object3D();
 
+                this.groundCircle = document.createElement('a-circle');
+                this.groundCircle.setAttribute('radius', this.data.groundRadius);
+                this.groundCircle.setAttribute('rotation', '-90 0 0');
+                this.groundCircle.setAttribute('material', 'color: #654321; opacity: 0.7; side: double;');
+                this.groundCircle.setAttribute('position', '0 -0.01 0');
+                this.el.appendChild(this.groundCircle);
+
                 this.initFlowers();
 
-                // Add text using A-Frame entity
                 const textEl = document.createElement('a-text');
                 textEl.setAttribute('value', "Why can't this be a community garden?");
                 textEl.setAttribute('align', 'center');
                 textEl.setAttribute('color', '#FFF');
                 textEl.setAttribute('width', '6');
-                textEl.setAttribute('position', `0 ${this.data.maxHeight + 1.0} 0`);
-                textEl.setAttribute('look-at', '[gps-new-camera]'); // UPDATE look-at target
+                textEl.setAttribute('position', `0 ${this.data.maxHeight + 1.2} 0`);
+                textEl.setAttribute('look-at', '[gps-new-camera]');
                 this.el.appendChild(textEl);
 
-                 // Add the InstancedMesh once the entity's object3D is ready
-                 this.el.addEventListener('object3dset', () => {
+                this.el.addEventListener('object3dset', () => {
                      if (this.el.object3D && this.instancedFlowers) {
                          this.el.object3D.add(this.instancedFlowers);
-                         console.log('Styled Flower Garden: InstancedMesh added to A-Frame entity.');
-                         // Place flowers only when the component/entity becomes visible
+                         console.log('Styled Flower Garden: InstancedMesh for flowers added.');
                          if(this.el.getAttribute('visible')) {
                             this.placeFlowers();
                          }
                      }
                  });
-
-                 // Handle visibility change to place/reset flowers
                  this.el.addEventListener('componentchanged', (evt) => {
                     if (evt.detail.name === 'visible') {
                         if (evt.detail.newData === true && this.instancedFlowers) {
@@ -246,122 +219,87 @@
                     }
                 });
             },
-
             initFlowers: function () {
                 const baseFlowerGeometry = new this.THREE.PlaneGeometry(1.8, 1.8);
                 const baseFlowerMaterial = new this.THREE.ShaderMaterial({
                     uniforms: { u_time: { value: 0.0 } },
                     vertexShader: document.getElementById('flowerVertexShader').textContent,
                     fragmentShader: document.getElementById('flowerFragmentShader').textContent,
-                    transparent: true,
-                    side: this.THREE.DoubleSide,
-                    depthWrite: false
+                    transparent: true, side: this.THREE.DoubleSide, depthWrite: false
                 });
-
                 this.instancedFlowers = new this.THREE.InstancedMesh(baseFlowerGeometry, baseFlowerMaterial, this.MAX_FLOWERS);
-                this.instancedFlowers.instanceMatrix.setUsage(this.THREE.DynamicDrawUsage); // Use THREE namespace
+                this.instancedFlowers.instanceMatrix.setUsage(this.THREE.DynamicDrawUsage);
                 this.instancedFlowers.geometry.setAttribute('instanceRandomVec2', new this.THREE.InstancedBufferAttribute(this.instanceRandomVec2s, 2));
                 this.instancedFlowers.geometry.setAttribute('instanceStemGrowTime', new this.THREE.InstancedBufferAttribute(this.instanceStemGrowTimes, 1));
                 this.instancedFlowers.geometry.setAttribute('instanceFlowerGrowTime', new this.THREE.InstancedBufferAttribute(this.instanceFlowerGrowTimes, 1));
                 this.instancedFlowers.count = 0;
-                 // Mesh added via 'object3dset' listener
             },
-
-             placeFlowers: function () {
-                 if (!this.instancedFlowers || !this.el.object3D) { // Check if object3D is ready
-                     console.warn("placeFlowers: InstancedMesh or entity object3D not ready yet.");
-                     // Attempt to add mesh again if not already added
+            placeFlowers: function () {
+                 if (!this.instancedFlowers || !this.el.object3D) {
+                     console.warn("placeFlowers: InstancedMesh or entity object3D not ready.");
                      if (this.el.object3D && this.instancedFlowers && !this.instancedFlowers.parent) {
                          this.el.object3D.add(this.instancedFlowers);
                      }
-                     // Optionally retry placement after a short delay if initialization races occur
-                     // setTimeout(() => { this.placeFlowers(); }, 100); 
                      return;
                  }
-                if (this.currentFlowerCount > 0) {
-                    console.log("placeFlowers: Flowers already seem placed or count > 0. Resetting first.");
-                    this.resetFlowers(); // Ensure clean state before placing
-                }
+                if (this.currentFlowerCount > 0) this.resetFlowers();
 
                 const flowerCount = this.MAX_FLOWERS;
-                const radius = this.data.radius;
+                const spreadRadius = this.data.radius;
                 const minHeight = this.data.minHeight;
                 const maxHeight = this.data.maxHeight;
 
-                console.log(`placeFlowers: Attempting to place ${flowerCount} flowers.`);
-
                 this.instanceIsBlooming.fill(false);
-                this.instanceStemGrowTimes.fill(0);
-                this.instanceFlowerGrowTimes.fill(0);
-                this.instanceRandomVec2s.fill(0);
-                this.instanceStemGrowDuration.fill(0);
-                this.instanceFlowerGrowDuration.fill(0);
+                this.instanceStemGrowTimes.fill(0); this.instanceFlowerGrowTimes.fill(0);
+                this.instanceRandomVec2s.fill(0); this.instanceStemGrowDuration.fill(0); this.instanceFlowerGrowDuration.fill(0);
 
                 for (let i = 0; i < flowerCount; i++) {
                     const angle = Math.random() * Math.PI * 2;
-                    const distance = Math.random() * radius;
+                    const distance = Math.random() * spreadRadius;
                     const x = Math.cos(angle) * distance;
                     const z = Math.sin(angle) * distance;
                     const y = minHeight + Math.random() * (maxHeight - minHeight);
-
                     this.dummy.position.set(x, y, z);
                     this.dummy.rotation.set(0, Math.random() * Math.PI * 2, 0);
                     const scaleVariation = 0.6 + Math.random() * 0.8;
                     this.dummy.scale.set(scaleVariation, scaleVariation, scaleVariation);
                     this.dummy.updateMatrix();
                     this.instancedFlowers.setMatrixAt(i, this.dummy.matrix);
-
-                    this.instanceRandomVec2s[i * 2 + 0] = Math.random();
-                    this.instanceRandomVec2s[i * 2 + 1] = Math.random();
-                    this.instanceStemGrowTimes[i] = 0.0;
-                    this.instanceFlowerGrowTimes[i] = 0.0;
-                    this.instanceStemGrowDuration[i] = 1.0;
-                    this.instanceFlowerGrowDuration[i] = 2.0;
-                    
+                    this.instanceRandomVec2s[i * 2 + 0] = Math.random(); this.instanceRandomVec2s[i * 2 + 1] = Math.random();
+                    this.instanceStemGrowTimes[i] = 0.0; this.instanceFlowerGrowTimes[i] = 0.0;
+                    this.instanceStemGrowDuration[i] = 1.0; this.instanceFlowerGrowDuration[i] = 2.0;
                     setTimeout(() => { if(this.instanceIsBlooming) this.instanceIsBlooming[i] = true; }, 200 + Math.random() * 3000);
                 }
                 this.instancedFlowers.instanceMatrix.needsUpdate = true;
                 if (this.instancedFlowers.geometry.attributes.instanceRandomVec2) this.instancedFlowers.geometry.attributes.instanceRandomVec2.needsUpdate = true;
                 if (this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true;
                 if (this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
-                this.instancedFlowers.count = flowerCount; // Set count AFTER loop
-                this.currentFlowerCount = flowerCount; // Update internal count
-                console.log(`Styled Flower Garden: Placed ${this.currentFlowerCount} flowers.`);
+                this.instancedFlowers.count = flowerCount;
+                this.currentFlowerCount = flowerCount;
+                console.log(`Styled Flower Garden: Placed ${this.currentFlowerCount} flowers within radius ${spreadRadius}m.`);
             },
-            
             resetFlowers: function() {
                 if (this.instancedFlowers) {
                     this.instancedFlowers.count = 0;
                     if (this.instancedFlowers.instanceMatrix) this.instancedFlowers.instanceMatrix.needsUpdate = true;
-                    this.instanceIsBlooming.fill(false); // Reset blooming state array
-                    this.instanceStemGrowTimes.fill(0);
-                    this.instanceFlowerGrowTimes.fill(0);
+                    if (this.instanceIsBlooming) this.instanceIsBlooming.fill(false);
+                    this.instanceStemGrowTimes.fill(0); this.instanceFlowerGrowTimes.fill(0);
                     this.currentFlowerCount = 0;
                     console.log("Styled Flower Garden: Flowers reset.");
                 }
             },
-
             tick: function (time, deltaTime) {
-                if (!this.instancedFlowers || this.currentFlowerCount === 0 || !this.el.getAttribute('visible')) return; // Use currentFlowerCount
-
+                if (!this.instancedFlowers || this.currentFlowerCount === 0 || !this.el.getAttribute('visible')) return;
                 const dt = deltaTime / 1000;
                 const elapsedTime = this.clock.getElapsedTime();
-
                 if (this.instancedFlowers.material.uniforms.u_time) {
                     this.instancedFlowers.material.uniforms.u_time.value = elapsedTime;
                 }
-
-                let needsStemTimeUpdate = false;
-                let needsFlowerTimeUpdate = false;
-                let needsMatrixUpdate = false; // Flag for billboarding changes
-
-                for (let i = 0; i < this.currentFlowerCount; i++) { // Use currentFlowerCount
-                    if (this.instanceIsBlooming && this.instanceIsBlooming[i]) { // Check if array exists
-                        let currentStemTime = this.instanceStemGrowTimes[i];
-                        let currentFlowerTime = this.instanceFlowerGrowTimes[i];
-                        const stemDuration = this.instanceStemGrowDuration[i];
-                        const flowerDuration = this.instanceFlowerGrowDuration[i];
-
+                let needsStemTimeUpdate = false; let needsFlowerTimeUpdate = false; let needsMatrixUpdate = false;
+                for (let i = 0; i < this.currentFlowerCount; i++) {
+                    if (this.instanceIsBlooming && this.instanceIsBlooming[i]) {
+                        let currentStemTime = this.instanceStemGrowTimes[i]; let currentFlowerTime = this.instanceFlowerGrowTimes[i];
+                        const stemDuration = this.instanceStemGrowDuration[i]; const flowerDuration = this.instanceFlowerGrowDuration[i];
                         if (currentStemTime < stemDuration) {
                             currentStemTime += dt;
                             if(this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.setX(i, currentStemTime);
@@ -371,60 +309,37 @@
                              if(this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.setX(i, currentFlowerTime);
                             needsFlowerTimeUpdate = true;
                         }
-                        this.instanceStemGrowTimes[i] = currentStemTime;
-                        this.instanceFlowerGrowTimes[i] = currentFlowerTime;
+                        this.instanceStemGrowTimes[i] = currentStemTime; this.instanceFlowerGrowTimes[i] = currentFlowerTime;
                     }
                 }
-
                 if (needsStemTimeUpdate && this.instancedFlowers.geometry.attributes.instanceStemGrowTime) this.instancedFlowers.geometry.attributes.instanceStemGrowTime.needsUpdate = true;
                 if (needsFlowerTimeUpdate && this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime) this.instancedFlowers.geometry.attributes.instanceFlowerGrowTime.needsUpdate = true;
-                
-                // Billboarding logic
-                 if (this.camera && this.camera.el && this.camera.el.object3D && this.el.object3D) {
+                if (this.camera && this.camera.el && this.camera.el.object3D && this.el.object3D) {
                     const camWorldPos = new this.THREE.Vector3();
-                    this.camera.el.object3D.getWorldPosition(camWorldPos); // Get camera world position
-
-                     const parentWorldMatrix = this.el.object3D.matrixWorld;
-                     const parentInverseWorldMatrix = new this.THREE.Matrix4().copy(parentWorldMatrix).invert();
-
-                    for (let i = 0; i < this.currentFlowerCount; i++) { // Use currentFlowerCount
-                        this.instancedFlowers.getMatrixAt(i, this.dummy.matrix); // Get current local matrix
-
-                        // Decompose local matrix to get local position
-                        const localPos = new this.THREE.Vector3();
-                        const localQuat = new this.THREE.Quaternion(); // Store original quaternion if needed
-                        const localScale = new this.THREE.Vector3();
+                    this.camera.el.object3D.getWorldPosition(camWorldPos);
+                    const parentWorldMatrix = this.el.object3D.matrixWorld;
+                    const parentInverseWorldMatrix = new this.THREE.Matrix4().copy(parentWorldMatrix).invert();
+                    for (let i = 0; i < this.currentFlowerCount; i++) {
+                        this.instancedFlowers.getMatrixAt(i, this.dummy.matrix);
+                        const localPos = new this.THREE.Vector3(); const localQuat = new this.THREE.Quaternion(); const localScale = new this.THREE.Vector3();
                         this.dummy.matrix.decompose(localPos, localQuat, localScale);
-
-                        // Calculate world position of the instance
                         const instanceWorldPos = localPos.clone().applyMatrix4(parentWorldMatrix);
-
-                        // Calculate lookAt matrix in world space
-                        this.dummy.position.copy(instanceWorldPos);
-                        this.dummy.scale.copy(localScale); // Keep original scale
-                        this.dummy.lookAt(camWorldPos);
-                        this.dummy.updateMatrixWorld(true); // Force update world matrix after lookAt
-
-                        // Convert the world matrix back to local space relative to the parent entity
+                        this.dummy.position.copy(instanceWorldPos); this.dummy.scale.copy(localScale);
+                        this.dummy.lookAt(camWorldPos); this.dummy.updateMatrixWorld(true);
                         this.dummy.matrix.premultiply(parentInverseWorldMatrix);
-
-                        // Set the updated local matrix
                         this.instancedFlowers.setMatrixAt(i, this.dummy.matrix);
                         needsMatrixUpdate = true;
                     }
-                    if (needsMatrixUpdate) {
-                        this.instancedFlowers.instanceMatrix.needsUpdate = true;
-                    }
-                 }
+                    if (needsMatrixUpdate) this.instancedFlowers.instanceMatrix.needsUpdate = true;
+                }
             }
         });
 
-        // Location Proximity Checker (UPDATED TO LISTEN for gps-new-camera)
         AFRAME.registerComponent('location-check', {
             schema: {
                 targetLat: { type: 'number', default: 0 },
                 targetLon: { type: 'number', default: 0 },
-                threshold: { type: 'number', default: 50 },
+                activationThreshold: { type: 'number', default: 75 },
                 debugElement: {type: 'selector'}
             },
             init: function () {
@@ -434,18 +349,21 @@
                 this.responseToggleBtn = document.getElementById('response-toggle');
                 this.resetBtn = document.getElementById('reset-btn');
                 this.instructionsDiv = document.getElementById('instructions');
-                this.hasEnteredRange = false; // Track if user has entered the range
-
-                if (!this.gardenEntity) {
-                    console.error("Location Check: gps-garden entity not found!"); return;
-                }
+                this.isGardenActive = false;
+                if (!this.gardenEntity) { console.error("Location Check: gps-garden entity not found!"); return; }
                 this.debugEl = this.data.debugElement;
                 if (this.debugEl) this.debugEl.style.display = 'block';
-
-                console.log(`Location Check Initialized: Target ${this.data.targetLat}, ${this.data.targetLon}, Threshold: ${this.data.threshold}m`);
-
-                 // UPDATE: Listen to gps-new-camera update event
-                 window.addEventListener('gps-camera-update-position', (event) => {
+                console.log(`Location Check: Target ${this.data.targetLat}, ${this.data.targetLon}, Activation Threshold: ${this.data.activationThreshold}m`);
+                this.gpsUpdateListener = (event) => {
+                    if (this.isGardenActive && this.gardenEntity.getAttribute('visible')) {
+                        if (this.debugEl && event.detail && event.detail.position) {
+                             const currentLat = event.detail.position.latitude;
+                             const currentLon = event.detail.position.longitude;
+                             const distance = calculateDistance(currentLat, currentLon, this.data.targetLat, this.data.targetLon);
+                             this.debugEl.innerHTML = `Dist: ${distance.toFixed(1)}m. Garden Active.`;
+                        }
+                        return;
+                    }
                     if (!event.detail || !event.detail.position) {
                         console.warn('Location Check: gps-camera-update-position event missing details.');
                         return;
@@ -453,45 +371,31 @@
                     const currentLat = event.detail.position.latitude;
                     const currentLon = event.detail.position.longitude;
                     const distance = calculateDistance(currentLat, currentLon, this.data.targetLat, this.data.targetLon);
-
                     if (this.debugEl) {
-                        this.debugEl.innerHTML = `Current: ${currentLat.toFixed(6)}, ${currentLon.toFixed(6)}<br>Target: ${this.data.targetLat.toFixed(6)}, ${this.data.targetLon.toFixed(6)}<br>Distance: ${distance.toFixed(1)}m`;
+                        this.debugEl.innerHTML = `Current: ${currentLat.toFixed(6)}, ${currentLon.toFixed(6)}<br>Target: ${this.data.targetLat.toFixed(6)}, ${this.data.targetLon.toFixed(6)}<br>Distance: ${distance.toFixed(1)}m / ${this.data.activationThreshold}m`;
                     }
-
-                    if (distance < this.data.threshold) {
-                        if (!this.hasEnteredRange) { // Only trigger on first entry
-                             this.hasEnteredRange = true;
-                             this.gardenEntity.setAttribute('visible', true); // Visibility change triggers flower placement via listener
-                             if(this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'block';
-                             if(this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'block';
-                             if(this.responseToggleBtn) this.responseToggleBtn.style.display = 'flex';
-                             if(this.resetBtn) this.resetBtn.style.display = 'flex';
-                             if(this.instructionsDiv) this.instructionsDiv.style.display = 'none';
-                             loadAndCycleResponses(true);
-                             console.log("Location Check: User IN RANGE. Garden visible.");
-                        }
-                    } else {
-                         if (this.hasEnteredRange) { // Only trigger on first exit
-                             this.hasEnteredRange = false;
-                             this.gardenEntity.setAttribute('visible', false); // Visibility change triggers flower reset via listener
-                             if(this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'none';
-                             if(this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'none';
-                             if(this.responseToggleBtn) this.responseToggleBtn.style.display = 'none';
-                             if(this.resetBtn) this.resetBtn.style.display = 'none';
-                             const responseForm = document.getElementById('response-form-container');
-                             if(responseForm) responseForm.style.display = 'none';
-                             if(this.responseToggleBtn) this.responseToggleBtn.textContent = '+';
-                             if(this.instructionsDiv) this.instructionsDiv.style.display = 'block';
-                             console.log("Location Check: User OUT OF RANGE. Garden hidden.");
-                         }
+                    if (!this.isGardenActive && distance < this.data.activationThreshold || (!this.isGardenActive && this.wasReset)) {
+                         this.isGardenActive = true;
+                         this.gardenEntity.setAttribute('visible', true);
+                         if(this.mainMessageDisplay) this.mainMessageDisplay.style.display = 'block';
+                         if(this.dynamicResponseDisplay) this.dynamicResponseDisplay.style.display = 'block';
+                         if(this.responseToggleBtn) this.responseToggleBtn.style.display = 'flex';
+                         if(this.resetBtn) this.resetBtn.style.display = 'flex';
+                         if(this.instructionsDiv) this.instructionsDiv.style.display = 'none';
+                         loadAndCycleResponses(true);
+                         console.log("Location Check: GPS active and within initial range. Garden is now VISIBLE and will stay visible.");
+                         this.wasReset = false;
                     }
-                });
+                };
+                window.addEventListener('gps-camera-update-position', this.gpsUpdateListener);
+                this.wasReset = false;
+            },
+            remove: function() {
+                window.removeEventListener('gps-camera-update-position', this.gpsUpdateListener);
             }
         });
 
-        // --- Global UI Event Listeners & Functions ---
         document.addEventListener('DOMContentLoaded', function() {
-            // ... (Event listeners for buttons and form submission remain largely the same) ...
             const responseToggleBtn = document.getElementById('response-toggle');
             const responseFormContainer = document.getElementById('response-form-container');
             const gardenResponseForm = document.getElementById('garden-response-form-actual');
@@ -502,7 +406,6 @@
             const mainMessageDisplay = document.getElementById('main-message-display');
             const dynamicResponseTextDisplay = document.getElementById('dynamic-response-text-display');
 
-
             if (responseToggleBtn && responseFormContainer) {
                 responseToggleBtn.addEventListener('click', function () {
                     const isFormVisible = responseFormContainer.style.display === 'block';
@@ -510,56 +413,48 @@
                     responseToggleBtn.textContent = isFormVisible ? '+' : '✕';
                 });
             }
-
             if (resetBtn && gardenEntity) {
                 resetBtn.addEventListener('click', function() {
-                    // Reset button just explicitly hides things now, location check handles re-showing
-                    gardenEntity.setAttribute('visible', false); // Hide the garden (triggers flower reset)                    
+                    gardenEntity.setAttribute('visible', false);
                     if(mainMessageDisplay) mainMessageDisplay.style.display = 'none';
                     if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none';
                     if(responseToggleBtn) responseToggleBtn.style.display = 'none';
                     if(responseFormContainer) responseFormContainer.style.display = 'none';
                     if(responseToggleBtn) responseToggleBtn.textContent = '+';
-                    if(resetBtn) resetBtn.style.display = 'none'; 
+                    if(resetBtn) resetBtn.style.display = 'none';
                     if(instructionsDiv) instructionsDiv.style.display = 'block';
-                    const locationCheck = document.querySelector('[location-check]').components['location-check'];
-                    if(locationCheck) locationCheck.hasEnteredRange = false; // Allow re-entry detection
-                    console.log("Reset Button: Garden hidden by user.");
+                    const locCheckComponentInstance = gardenEntity.components['location-check'];
+                    if (locCheckComponentInstance) {
+                        locCheckComponentInstance.isGardenActive = false;
+                        locCheckComponentInstance.wasReset = true;
+                    }
+                    console.log("Reset Button: Garden hidden. Ready for re-activation.");
                 });
             }
-
-            if (gardenResponseForm && responseStatusDiv) {
+             if (gardenResponseForm) {
                 gardenResponseForm.addEventListener('submit', function(e) {
-                     e.preventDefault();
+                    e.preventDefault();
                     const name = gardenResponseForm.name.value;
                     const message = gardenResponseForm.message.value;
                     const timestamp = new Date().toLocaleString();
-
                     if (!name || !message) {
                         responseStatusDiv.textContent = 'Please fill out all fields.';
-                        responseStatusDiv.style.color = '#ff6b6b';
-                        return;
+                        responseStatusDiv.style.color = '#ff6b6b'; return;
                     }
-                    responseStatusDiv.textContent = 'Submitting...';
-                    responseStatusDiv.style.color = 'white';
-
-                    const scriptURL = 'YOUR_APPS_SCRIPT_ID_HERE'; // <<< REPLACE
+                    responseStatusDiv.textContent = 'Submitting...'; responseStatusDiv.style.color = 'white';
+                    const scriptURL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE_FOR_SUBMIT'; // <<< REPLACE
                     const formData = new FormData();
-                    formData.append('name', name);
-                    formData.append('message', message);
-                    formData.append('timestamp', timestamp);
-                    formData.append('action', 'submitResponse'); 
-
+                    formData.append('name', name); formData.append('message', message);
+                    formData.append('timestamp', timestamp); formData.append('action', 'submitResponse');
                     fetch(scriptURL, { method: 'POST', body: formData, mode: 'no-cors' })
                         .then(() => {
                             responseStatusDiv.textContent = 'Thank you for sharing!';
-                            responseStatusDiv.style.color = '#4CAF50';
-                            gardenResponseForm.reset();
-                            setTimeout(() => { 
+                            responseStatusDiv.style.color = '#4CAF50'; gardenResponseForm.reset();
+                            setTimeout(() => {
                                 if(responseFormContainer) responseFormContainer.style.display = 'none';
                                 if(responseToggleBtn) responseToggleBtn.textContent = '+';
                              }, 2000);
-                             loadAndCycleResponses(false); // Reload responses
+                             loadAndCycleResponses(false);
                         })
                         .catch(error => {
                             console.error('Error submitting response:', error);
@@ -568,13 +463,10 @@
                         });
                 });
             }
-            
-            // iOS Motion Sensor Permission Handling (remain the same)
-             const permissionOverlay = document.getElementById('permission-overlay');
-             const permissionBtn = document.getElementById('permission-btn');
-             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-
-             if (isIOS && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            const permissionOverlay = document.getElementById('permission-overlay');
+            const permissionBtn = document.getElementById('permission-btn');
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            if (isIOS && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
                  if(permissionOverlay) permissionOverlay.style.display = 'flex';
                  if(permissionBtn) permissionBtn.addEventListener('click', function() {
                      DeviceMotionEvent.requestPermission().then(response => {
@@ -591,68 +483,53 @@
                          } else { alert('Device motion permission denied.'); }
                      }).catch(console.error);
                  }, { once: true });
-             } else {
-                  if(permissionOverlay) permissionOverlay.style.display = 'none'; 
-             }
+             } else { if(permissionOverlay) permissionOverlay.style.display = 'none'; }
         });
-        
-        // Dynamic Server Responses Logic (remains the same)
-        let serverResponses = [];
-        let currentResponseIndex = -1;
-        let responseIntervalId = null;
-        const dynamicResponseTextDisplay = document.getElementById('dynamic-response-text-display');
+
+        let serverResponses = []; let currentResponseIndex = -1; let responseIntervalId = null;
+        const dynamicResponseTextDisplayGlobal = document.getElementById('dynamic-response-text-display');
 
         function loadAndCycleResponses(isInitialCall = false) {
-            const fetchScriptURL = 'YOUR_APPS_SCRIPT_ID_HERE'; // <<< REPLACE 
+            const fetchScriptURL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE_FOR_GET'; // <<< REPLACE
             const defaultResponses = [
-                { name: "Gardener", message: "Seeds of hope grow here." }, 
+                { name: "Gardener", message: "Seeds of hope grow here." },
                 { name: "Neighbor", message: "What a beautiful idea!" },
                 { name: "Visitor", message: "This space has potential." }
             ];
-
             fetch(fetchScriptURL)
-                // ... fetch logic remains the same ...
-                 .then(response => {
-                    if (!response.ok) throw new Error(`Network response was not ok: ${response.statusText}`);
-                    return response.json();
-                })
+                .then(response => { if (!response.ok) { throw new Error('Network response was not ok'); } return response.json();})
                 .then(data => {
                     if (data.result === 'success' && data.responses && data.responses.length > 0) {
                         serverResponses = data.responses.map(r => ({ name: r.name || "Anonymous", message: r.message || ""}));
-                        console.log(`Loaded ${serverResponses.length} responses from server.`);
-                    } else {
-                        serverResponses = defaultResponses;
-                        console.log("No valid responses from server or error, using defaults.");
-                    }
+                    } else { serverResponses = defaultResponses; }
                 })
-                .catch(error => {
-                    console.error('Error loading responses:', error);
-                    serverResponses = defaultResponses; // Fallback to defaults on error
-                })
+                .catch(error => { console.error('Error loading responses:', error); serverResponses = defaultResponses; })
                 .finally(() => {
                     if (serverResponses.length > 0) {
-                        if (responseIntervalId) clearInterval(responseIntervalId); 
-                        if(isInitialCall) showNextResponse(); 
+                        if (responseIntervalId) clearInterval(responseIntervalId);
+                        if(isInitialCall) showNextResponse();
                         responseIntervalId = setInterval(showNextResponse, 10000);
-                        if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'block';
-                    } else {
-                        if(dynamicResponseTextDisplay) dynamicResponseTextDisplay.style.display = 'none';
-                    }
+                        if(dynamicResponseTextDisplayGlobal) dynamicResponseTextDisplayGlobal.style.display = 'block';
+                    } else { if(dynamicResponseTextDisplayGlobal) dynamicResponseTextDisplayGlobal.style.display = 'none'; }
                 });
         }
-
         function showNextResponse() {
-             // ... showNextResponse logic remains the same ...
-             if (!serverResponses || serverResponses.length === 0 || !dynamicResponseTextDisplay) return;
-            
+             if (!serverResponses || serverResponses.length === 0 || !dynamicResponseTextDisplayGlobal) return;
             currentResponseIndex = (currentResponseIndex + 1) % serverResponses.length;
             const response = serverResponses[currentResponseIndex];
-            
-            dynamicResponseTextDisplay.textContent = `"${response.message}" - ${response.name}`;
-            dynamicResponseTextDisplay.style.opacity = 0;
-            setTimeout(() => { dynamicResponseTextDisplay.style.opacity = 1; }, 100);
+            dynamicResponseTextDisplayGlobal.textContent = `"${response.message}" - ${response.name}`;
+            dynamicResponseTextDisplayGlobal.style.opacity = 0;
+            setTimeout(() => { dynamicResponseTextDisplayGlobal.style.opacity = 1; }, 100);
         }
-
+        function toRadians(degrees) { return degrees * Math.PI / 180; }
+        function toDegrees(radians) { return radians * 180 / Math.PI; }
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; const φ1 = toRadians(lat1); const φ2 = toRadians(lat2);
+            const Δφ = toRadians(lat2 - lat1); const Δλ = toRadians(lon2 - lon1);
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
     </script>
 </body>
 </html>
