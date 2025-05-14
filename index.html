@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Why can't this be a community garden? (Location Based v7 - Robust UI)</title>
+    <title>Why can't this be a community garden? (v7.1 - Visual Debug Test)</title>
 
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
@@ -73,7 +73,7 @@
             return R * c;
         }
 
-        AFRAME.registerComponent('loading-screen-manager', { /* ... same ... */
+        AFRAME.registerComponent('loading-screen-manager', {
             init: function () {
                 const loadingScreen = document.getElementById('loading');
                 const arjsLoaderDisplay = document.querySelector('.arjs-loader-display');
@@ -101,7 +101,8 @@
                 }, 15000);
             }
         });
-        AFRAME.registerComponent('styled-flower-garden', { /* ... same ... */
+
+        AFRAME.registerComponent('styled-flower-garden', {
             schema: { flowerCount: { type: 'number', default: 100 }, radius: { type: 'number', default: 3 }, minHeight: {type: 'number', default: 0.05}, maxHeight: {type: 'number', default: 0.5}, groundRadius: {type: 'number', default: 3.05} },
             init: function () {
                 this.THREE = AFRAME.THREE; this.sceneEl = this.el.sceneEl; this.camera = this.sceneEl.camera; this.clock = new this.THREE.Clock();
@@ -118,9 +119,9 @@
                 textEl.setAttribute('align', 'center'); textEl.setAttribute('color', '#FFF'); textEl.setAttribute('width', '6');
                 textEl.setAttribute('position', `0 ${this.data.maxHeight + 1.2} 0`); textEl.setAttribute('look-at', '[gps-new-camera]'); this.el.appendChild(textEl);
                 this.el.addEventListener('object3dset', () => {
-                     if (this.el.object3D && this.instancedFlowers) { this.el.object3D.add(this.instancedFlowers); if(this.el.getAttribute('visible')) { this.placeFlowers(); } }});
+                     if (this.el.object3D && this.instancedFlowers) { this.el.object3D.add(this.instancedFlowers); console.log('Styled Flower Garden: InstancedMesh for flowers added.'); if(this.el.getAttribute('visible')) { this.placeFlowers(); } }});
                  this.el.addEventListener('componentchanged', (evt) => {
-                    if (evt.detail.name === 'visible') { if (evt.detail.newData === true && this.instancedFlowers) { this.placeFlowers(); } else if (evt.detail.newData === false && this.instancedFlowers) { this.resetFlowers();}}});
+                    if (evt.detail.name === 'visible') { if (evt.detail.newData === true && this.instancedFlowers) { console.log('Styled Flower Garden: Became visible, placing flowers.'); this.placeFlowers(); } else if (evt.detail.newData === false && this.instancedFlowers) { console.log('Styled Flower Garden: Became hidden, resetting flowers.'); this.resetFlowers();}}});
             },
             initFlowers: function () {
                 const baseFlowerGeometry = new this.THREE.PlaneGeometry(1.8, 1.8);
@@ -131,7 +132,7 @@
                 this.instancedFlowers.geometry.setAttribute('instanceFlowerGrowTime', new this.THREE.InstancedBufferAttribute(this.instanceFlowerGrowTimes, 1)); this.instancedFlowers.count = 0;
             },
             placeFlowers: function () {
-                 if (!this.instancedFlowers || !this.el.object3D) { if (this.el.object3D && this.instancedFlowers && !this.instancedFlowers.parent) { this.el.object3D.add(this.instancedFlowers); } return; }
+                 if (!this.instancedFlowers || !this.el.object3D) { console.warn("placeFlowers: InstancedMesh or entity object3D not ready."); if (this.el.object3D && this.instancedFlowers && !this.instancedFlowers.parent) { this.el.object3D.add(this.instancedFlowers); } return; }
                 if (this.currentFlowerCount > 0) this.resetFlowers();
                 const flowerCount = this.MAX_FLOWERS; const spreadRadius = this.data.radius; const minHeight = this.data.minHeight; const maxHeight = this.data.maxHeight;
                 this.instanceIsBlooming.fill(false); this.instanceStemGrowTimes.fill(0); this.instanceFlowerGrowTimes.fill(0); this.instanceRandomVec2s.fill(0); this.instanceStemGrowDuration.fill(0); this.instanceFlowerGrowDuration.fill(0);
@@ -155,7 +156,7 @@
                 if (this.camera && this.camera.el && this.camera.el.object3D && this.el.object3D) { const camWorldPos = new this.THREE.Vector3(); this.camera.el.object3D.getWorldPosition(camWorldPos); const parentWorldMatrix = this.el.object3D.matrixWorld; const parentInverseWorldMatrix = new this.THREE.Matrix4().copy(parentWorldMatrix).invert(); for (let i = 0; i < this.currentFlowerCount; i++) { this.instancedFlowers.getMatrixAt(i, this.dummy.matrix); const localPos = new this.THREE.Vector3(); const localQuat = new this.THREE.Quaternion(); const localScale = new this.THREE.Vector3(); this.dummy.matrix.decompose(localPos, localQuat, localScale); const instanceWorldPos = localPos.clone().applyMatrix4(parentWorldMatrix); this.dummy.position.copy(instanceWorldPos); this.dummy.scale.copy(localScale); this.dummy.lookAt(camWorldPos); this.dummy.updateMatrixWorld(true); this.dummy.matrix.premultiply(parentInverseWorldMatrix); this.instancedFlowers.setMatrixAt(i, this.dummy.matrix); needsMatrixUpdate = true; } if (needsMatrixUpdate) this.instancedFlowers.instanceMatrix.needsUpdate = true; }
             }
         });
-        AFRAME.registerComponent('location-check', { /* ... same ... */
+        AFRAME.registerComponent('location-check', {
             schema: { targetLat: { type: 'number', default: 0 }, targetLon: { type: 'number', default: 0 }, activationThreshold: { type: 'number', default: 75 }, debugElement: {type: 'selector'} },
             init: function () {
                 this.gardenEntity = document.getElementById('gps-garden'); this.mainMessageDisplay = document.getElementById('main-message-display');
@@ -196,22 +197,20 @@
             const instructionsDiv = document.getElementById('instructions'); const mainMessageDisplay = document.getElementById('main-message-display');
             const dynamicResponseTextDisplay = document.getElementById('dynamic-response-text-display');
             const requestGpsBtn = document.getElementById('request-gps-btn');
-            const gpsStatusMsg = document.getElementById('gps-status-msg'); // Ensure this is defined
+            const gpsStatusMsg = document.getElementById('gps-status-msg');
             const gpsRequestUI = document.getElementById('gps-request-ui');
 
-            // Defensive coding: Ensure all elements exist before proceeding
-            if (!requestGpsBtn || !gpsStatusMsg || !gpsRequestUI) {
-                console.error("Crucial GPS UI elements not found in DOM. Check IDs: gps-request-btn, gps-status-msg, gps-request-ui");
-                // Potentially hide or disable parts of the UI that depend on these
-                if(gpsRequestUI) gpsRequestUI.style.display = 'none'; // Hide if incomplete
-                // return; // Could even stop further UI setup if these are critical
-            }
+            console.log("DOM fully loaded. Setting up UI handlers.");
+            console.log("gpsRequestUI:", gpsRequestUI);
+            console.log("gpsStatusMsg:", gpsStatusMsg);
+            console.log("requestGpsBtn:", requestGpsBtn);
 
 
-            if (navigator.geolocation && gpsRequestUI && gpsStatusMsg && requestGpsBtn) { // Added checks for all
+            if (navigator.geolocation && gpsRequestUI && gpsStatusMsg && requestGpsBtn) {
                 navigator.permissions.query({name:'geolocation'})
                 .then(function(result) {
-                    if (gpsStatusMsg) { // Check again before using
+                    console.log("Geolocation permission state:", result.state);
+                    if (gpsStatusMsg) {
                         if (result.state === 'granted') {
                             gpsStatusMsg.textContent = 'Location permission already granted.';
                             if (gpsRequestUI) setTimeout(() => { gpsRequestUI.style.display = 'none'; }, 3000);
@@ -223,23 +222,25 @@
                             if (gpsRequestUI) gpsRequestUI.style.display = 'block';
                             if (requestGpsBtn) requestGpsBtn.disabled = true;
                         }
-                    }
+                    } else { console.warn("gpsStatusMsg element not found when checking permissions.");}
                 }).catch(function(err) {
                     console.warn("Error querying geolocation permissions: ", err);
-                    if (gpsStatusMsg) gpsStatusMsg.textContent = "Could not check location permission status.";
-                    if (gpsRequestUI) gpsRequestUI.style.display = 'block'; // Show UI to allow manual attempt
+                    if (gpsStatusMsg) gpsStatusMsg.textContent = "Could not check permission status.";
+                    else console.warn("gpsStatusMsg element not found for permission error.");
+                    if (gpsRequestUI) gpsRequestUI.style.display = 'block';
                 });
-            } else if (gpsRequestUI && gpsStatusMsg) { // If geolocation not supported, but UI elements exist
-                gpsStatusMsg.textContent = 'Geolocation not supported by this browser.';
+            } else {
+                console.warn("Geolocation API not supported or crucial GPS UI elements are missing.");
+                if (gpsStatusMsg) gpsStatusMsg.textContent = 'Geolocation not supported or UI missing.';
                 if (requestGpsBtn) requestGpsBtn.disabled = true;
-                if (gpsRequestUI) gpsRequestUI.style.display = 'block'; // Still show it to inform user
+                if (gpsRequestUI) gpsRequestUI.style.display = 'block'; // Show to inform user
             }
 
 
-            if (requestGpsBtn) { // Check if button exists before adding listener
+            if (requestGpsBtn) {
                 requestGpsBtn.addEventListener('click', function() {
                     if (gpsStatusMsg) gpsStatusMsg.textContent = 'Requesting location...';
-                    else console.log("Requesting location...");
+                    else console.log("Requesting location (gpsStatusMsg not found)...");
 
                     if (navigator.geolocation) {
                         navigator.geolocation.getCurrentPosition(
@@ -263,12 +264,11 @@
                         );
                     } else {
                         if (gpsStatusMsg) gpsStatusMsg.textContent = "Geolocation not supported.";
-                        else console.error("Geolocation not supported.");
+                        else console.error("Geolocation not supported (requestGpsBtn).");
                     }
                 });
-            }
+            } else { console.warn("requestGpsBtn element not found."); }
 
-            // ... (rest of the DOMContentLoaded listeners for other buttons/forms, ensure SCRIPT URLs are replaced)
             if (responseToggleBtn && responseFormContainer) { responseToggleBtn.addEventListener('click', function () { const isFormVisible = responseFormContainer.style.display === 'block'; responseFormContainer.style.display = isFormVisible ? 'none' : 'block'; responseToggleBtn.textContent = isFormVisible ? '+' : '✕'; }); }
             if (resetBtn && gardenEntity) {
                 resetBtn.addEventListener('click', function() {
@@ -299,7 +299,7 @@
 
         let serverResponses = []; let currentResponseIndex = -1; let responseIntervalId = null;
         const dynamicResponseTextDisplayGlobal = document.getElementById('dynamic-response-text-display');
-        function loadAndCycleResponses(isInitialCall = false) { /* ... same, REPLACE SCRIPT URL ... */
+        function loadAndCycleResponses(isInitialCall = false) {
             const fetchScriptURL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE_FOR_GET'; // <<< REPLACE
             const defaultResponses = [ { name: "Gardener", message: "Seeds of hope." }, { name: "Neighbor", message: "Beautiful idea!" }];
             fetch(fetchScriptURL)
@@ -308,25 +308,46 @@
                 .catch(error => { console.error('Load Resp Error:', error); serverResponses = defaultResponses; })
                 .finally(() => { if (serverResponses.length > 0) { if (responseIntervalId) clearInterval(responseIntervalId); if(isInitialCall) showNextResponse(); responseIntervalId = setInterval(showNextResponse, 10000); if(dynamicResponseTextDisplayGlobal) dynamicResponseTextDisplayGlobal.style.display = 'block'; } else { if(dynamicResponseTextDisplayGlobal) dynamicResponseTextDisplayGlobal.style.display = 'none'; } });
         }
-        function showNextResponse() { /* ... same ... */
+        function showNextResponse() {
              if (!serverResponses || serverResponses.length === 0 || !dynamicResponseTextDisplayGlobal) return; currentResponseIndex = (currentResponseIndex + 1) % serverResponses.length; const response = serverResponses[currentResponseIndex];
             dynamicResponseTextDisplayGlobal.textContent = `"${response.message}" - ${response.name}`; dynamicResponseTextDisplayGlobal.style.opacity = 0; setTimeout(() => { dynamicResponseTextDisplayGlobal.style.opacity = 1; }, 100);
         }
     </script>
 </head>
 <body>
-    <div id="loading"> </div>
+    <div id="loading">
+        <h1>Why can't...?</h1>
+        <p>Initializing AR... Waiting for Location Access...</p>
+        <p style="font-size: 0.8em; margin-top: 20px;">(Ensure HTTPS, and grant Camera & Location permissions when prompted. For best results, be outdoors.)</p>
+    </div>
     <div class="arjs-loader-display"><p>Starting AR subsystem...</p></div>
+
     <div id="gps-request-ui" class="permission-ui" style="display: none;">
         <p id="gps-status-msg">This experience needs your location.</p>
         <button id="request-gps-btn">Allow Location Access</button>
     </div>
-    <div id="permission-overlay" class="permission-ui" style="top: 80px; display:none;"> </div>
+    <div id="permission-overlay" class="permission-ui" style="top: 80px; display:none;">
+         <h2>Motion Sensors</h2>
+         <p>Enable motion sensors to look around.</p>
+         <button id="permission-btn">Allow Motion Sensors</button>
+    </div>
+
     <div id="main-message-display" class="message-container-style" style="display: none;"><p>Why can't this be a community garden?</p></div>
     <div id="dynamic-response-text-display" class="dynamic-response-display-style"></div>
     <div id="instructions">Point your camera around. The garden will appear if your GPS is active.</div>
-    <div class="controls"> </div>
-    <div id="response-form-container"> </div>
+    <div class="controls">
+        <button id="response-toggle" class="btn" title="Share Thoughts">+</button>
+        <button id="reset-btn" class="btn" title="Hide Garden">↺</button>
+    </div>
+    <div id="response-form-container">
+        <h3>Share Your Thoughts</h3>
+        <form id="garden-response-form-actual">
+            <label for="name">Your Name:</label><input type="text" id="name" name="name" placeholder="e.g., Alex P." required>
+            <label for="form-message">Why can't this be a community garden?</label><textarea id="form-message" name="message" placeholder="Your ideas..." required></textarea>
+            <button type="submit">Submit Idea</button>
+        </form>
+        <div id="response-status"></div>
+    </div>
     <div id="debug-info"></div>
 
     <a-scene
@@ -341,6 +362,7 @@
             gps-projected-entity-place="latitude: 35.995667; longitude: -78.910722;"
             visible="false"
             styled-flower-garden="flowerCount: 150; radius: 3; groundRadius: 3.05;">
+            <a-box id="test-box" color="red" scale="1 1 1" position="0 1 0" material="shader: flat;"></a-box>
         </a-entity>
 
         <a-camera gps-new-camera="gpsMinDistance: 5; gpsTimeInterval: 1000; simulateLatitude: 35.995694; simulateLongitude: -78.910722;"
