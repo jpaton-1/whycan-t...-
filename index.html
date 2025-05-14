@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Why can't this be a community garden? (Location Based v3)</title>
+    <title>Why can't this be a community garden? (Location Based v4 - Script Order Fixed)</title>
 
     <script src="https://aframe.io/releases/1.2.0/aframe.min.js"></script>
     <script src="https://raw.githack.com/AR-js-org/AR.js/master/aframe/build/aframe-ar-nft.js"></script>
@@ -14,7 +14,7 @@
         rel="stylesheet">
 
     <style>
-        /* Styles remain the same as previous version */
+        /* Styles remain the same */
         body { margin: 0; padding: 0; font-family: 'Roboto', Arial, sans-serif; overflow: hidden; background-color: #000; }
         #loading { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 3000; text-align: center; padding: 20px; box-sizing: border-box; }
         #loading h1 { font-family: 'Roboto', sans-serif; font-weight: 700; font-size: 2.5em; margin-bottom: 15px; }
@@ -66,69 +66,18 @@
         float get_stem_shape(vec2 _p, vec2 _plane_uv, float _w, float _angle, float stemTime, vec2 randomVec) { _w = max(0.004, _w); _w *= 0.6; float bend_amount = 0.8; float x_offset = _p.y * sin(_angle * 2.0) * bend_amount; x_offset *= pow(max(0.0, _plane_uv.y), 1.5); _p.x -= x_offset; float noise_power = 0.6; float stem_noise = noise_power * snoise(8.0 * _plane_uv + randomVec[0] * 5.0); stem_noise *= smoothstep(0.0, 0.15, length(_p)); stem_noise *= smoothstep(0.0, 0.05, _plane_uv.y); _p.x += stem_noise * 0.1; float left = smoothstep(-_w, 0.0, _p.x); float right = 1.0 - smoothstep(0.0, _w, _p.x); float stem_line = left * right; float normalizedStemTime = min(stemTime / 1.0, 1.0); float grow_progress = easeQuinticInOut(normalizedStemTime); float grow_height = -0.5 + grow_progress * 0.5; float height_mask = smoothstep(grow_height - 0.05, grow_height, _p.y); float stem_shape = stem_line * height_mask; stem_shape *= smoothstep(0.01, -0.01, _p.y); stem_shape *= step(0.0, _plane_uv.y); return stem_shape; }
         void main() { vec2 centeredUv = vUv - 0.5; vec3 stem_color = vec3(0.1 + vInstanceRandomVec2[0] * 0.6, 0.6, 0.2); vec3 flower_color_base = vec3(0.6 + 0.5 * vInstanceRandomVec2[1], 0.1, 0.9 - 0.5 * vInstanceRandomVec2[1]); float angle = 1.5 * (vInstanceRandomVec2[0] - 0.5); float stem_shape = get_stem_shape(centeredUv, vUv, 0.007, angle, vInstanceStemGrowTime, vInstanceRandomVec2); float color_noise_val = (snoise(vUv * 15.0 + vInstanceRandomVec2 * 2.0) + 1.0) * 0.5; color_noise_val = pow(color_noise_val, 1.5); vec3 flower_color_textured = flower_color_base * (0.8 + color_noise_val * 0.4); float petals_back_number = 2.0 + floor(vInstanceRandomVec2[0] * 3.0); float angle_offset_current = -(2.0 * step(0.0, angle) - 1.0) * 0.2 * min(vInstanceFlowerGrowTime, 2.0); float flower_back_shape = get_flower_shape(centeredUv, petals_back_number, angle + angle_offset_current, 1.5, vInstanceFlowerGrowTime, vInstanceRandomVec2, u_time); float petals_front_number = 3.0 + floor(vInstanceRandomVec2[1] * 3.0); float flower_front_shape = get_flower_shape(centeredUv, petals_front_number, angle, 1.0, vInstanceFlowerGrowTime, vInstanceRandomVec2, u_time); vec3 final_color = vec3(0.0); final_color += (stem_shape * stem_color); final_color += (flower_back_shape * (flower_color_textured + vec3(0.0, 0.6 * min(vInstanceFlowerGrowTime / 2.0, 1.0), 0.0))); final_color += (flower_front_shape * flower_color_textured); final_color.r *= 1.0 - (0.5 * flower_back_shape * flower_front_shape); final_color.b *= 1.0 - (flower_back_shape * flower_front_shape); float alpha = max(stem_shape, max(flower_back_shape, flower_front_shape)); alpha = smoothstep(0.0, 0.02, alpha); alpha *= 0.75; if (alpha < 0.01) discard; gl_FragColor = vec4(final_color, alpha); }
     </script>
-</head>
-
-<body>
-    <div id="loading">
-        <h1>Why can't...?</h1>
-        <p>Initializing garden experience...</p>
-         <p style="font-size: 0.8em; margin-top: 20px;">(Ensure you allow Camera and Location access and are using HTTPS)</p>
-    </div>
-    <div class="arjs-loader-display">
-        <p>Starting AR... Requesting permissions...</p>
-    </div>
-    <div id="permission-overlay">
-         <h2>Permissions Required</h2>
-         <p>This AR experience needs access to device motion sensors.</p>
-         <button id="permission-btn">Allow Motion Sensors</button>
-    </div>
-    <div id="main-message-display" class="message-container-style" style="display: none;">
-        <p>Why can't this be a community garden?</p>
-    </div>
-    <div id="dynamic-response-text-display" class="dynamic-response-display-style"></div>
-    <div id="instructions">Point your camera around. The garden will appear if your GPS is active.</div>
-    <div class="controls">
-        <button id="response-toggle" class="btn" title="Share Thoughts">+</button>
-        <button id="reset-btn" class="btn" title="Hide Garden">↺</button>
-    </div>
-    <div id="response-form-container">
-        <h3>Share Your Thoughts</h3>
-        <form id="garden-response-form-actual">
-            <label for="name">Your Name:</label>
-            <input type="text" id="name" name="name" placeholder="e.g., Alex P." required>
-            <label for="form-message">Why can't this be a community garden?</label>
-            <textarea id="form-message" name="message" placeholder="Your ideas..." required></textarea>
-            <button type="submit">Submit Idea</button>
-        </form>
-        <div id="response-status"></div>
-    </div>
-    <div id="debug-info"></div>
-
-    <a-scene
-        id="ar-scene"
-        vr-mode-ui="enabled: false"
-        embedded
-        renderer="logarithmicDepthBuffer: true; colorManagement: true; physicallyCorrectLights: true;"
-        arjs="
-            sourceType: webcam;
-            trackingMethod: best;
-            debugUIEnabled: false;
-            detectionMode: mono_and_matrix;
-            matrixCodeType: 3x3;
-            sourceWidth: 1280; sourceHeight: 960;
-            displayWidth: 1280; displayHeight: 960;"
-        location-check="targetLat: 35.995666; targetLon: -78.910711; activationThreshold: 75; debugElement: #debug-info" loading-screen-manager>
-
-        <a-entity id="gps-garden"
-            gps-projected-entity-place="latitude: 35.995666; longitude: -78.910711;" visible="false"
-            styled-flower-garden="flowerCount: 150; radius: 3; groundRadius: 3.05;">
-        </a-entity>
-
-        <a-camera gps-new-camera="gpsMinDistance: 5; gpsTimeInterval: 1000; simulateLatitude: 35.995666; simulateLongitude: -78.910711;" rotation-reader></a-camera>
-    </a-scene>
 
     <script>
-        // Helper functions (toRadians, toDegrees, calculateDistance) remain the same
+        // Helper functions (toRadians, toDegrees, calculateDistance)
+        function toRadians(degrees) { return degrees * Math.PI / 180; }
+        function toDegrees(radians) { return radians * 180 / Math.PI; }
+        function calculateDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371e3; const φ1 = toRadians(lat1); const φ2 = toRadians(lat2);
+            const Δφ = toRadians(lat2 - lat1); const Δλ = toRadians(lon2 - lon1);
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
 
         AFRAME.registerComponent('loading-screen-manager', {
             init: function () {
@@ -158,14 +107,14 @@
         });
 
         AFRAME.registerComponent('styled-flower-garden', {
-            schema: {
+            schema: { /* ... schema same as before ... */
                 flowerCount: { type: 'number', default: 100 },
                 radius: { type: 'number', default: 3 },
                 minHeight: {type: 'number', default: 0.05},
                 maxHeight: {type: 'number', default: 0.5},
                 groundRadius: {type: 'number', default: 3.05}
             },
-            init: function () {
+            init: function () { /* ... init logic same as before, ensure AFRAME.THREE is used ... */
                 this.THREE = AFRAME.THREE;
                 this.sceneEl = this.el.sceneEl;
                 this.camera = this.sceneEl.camera;
@@ -219,7 +168,7 @@
                     }
                 });
             },
-            initFlowers: function () {
+            initFlowers: function () { /* ... initFlowers logic same as before ... */
                 const baseFlowerGeometry = new this.THREE.PlaneGeometry(1.8, 1.8);
                 const baseFlowerMaterial = new this.THREE.ShaderMaterial({
                     uniforms: { u_time: { value: 0.0 } },
@@ -234,7 +183,7 @@
                 this.instancedFlowers.geometry.setAttribute('instanceFlowerGrowTime', new this.THREE.InstancedBufferAttribute(this.instanceFlowerGrowTimes, 1));
                 this.instancedFlowers.count = 0;
             },
-            placeFlowers: function () {
+            placeFlowers: function () { /* ... placeFlowers logic same as before ... */
                  if (!this.instancedFlowers || !this.el.object3D) {
                      console.warn("placeFlowers: InstancedMesh or entity object3D not ready.");
                      if (this.el.object3D && this.instancedFlowers && !this.instancedFlowers.parent) {
@@ -278,7 +227,7 @@
                 this.currentFlowerCount = flowerCount;
                 console.log(`Styled Flower Garden: Placed ${this.currentFlowerCount} flowers within radius ${spreadRadius}m.`);
             },
-            resetFlowers: function() {
+            resetFlowers: function() { /* ... resetFlowers logic same as before ... */
                 if (this.instancedFlowers) {
                     this.instancedFlowers.count = 0;
                     if (this.instancedFlowers.instanceMatrix) this.instancedFlowers.instanceMatrix.needsUpdate = true;
@@ -288,7 +237,7 @@
                     console.log("Styled Flower Garden: Flowers reset.");
                 }
             },
-            tick: function (time, deltaTime) {
+            tick: function (time, deltaTime) { /* ... tick logic same as before ... */
                 if (!this.instancedFlowers || this.currentFlowerCount === 0 || !this.el.getAttribute('visible')) return;
                 const dt = deltaTime / 1000;
                 const elapsedTime = this.clock.getElapsedTime();
@@ -336,13 +285,13 @@
         });
 
         AFRAME.registerComponent('location-check', {
-            schema: {
+            schema: { /* ... schema same as before ... */
                 targetLat: { type: 'number', default: 0 },
                 targetLon: { type: 'number', default: 0 },
                 activationThreshold: { type: 'number', default: 75 },
                 debugElement: {type: 'selector'}
             },
-            init: function () {
+            init: function () { /* ... init logic same as before ... */
                 this.gardenEntity = document.getElementById('gps-garden');
                 this.mainMessageDisplay = document.getElementById('main-message-display');
                 this.dynamicResponseDisplay = document.getElementById('dynamic-response-text-display');
@@ -390,11 +339,13 @@
                 window.addEventListener('gps-camera-update-position', this.gpsUpdateListener);
                 this.wasReset = false;
             },
-            remove: function() {
+            remove: function() { /* ... remove logic same as before ... */
                 window.removeEventListener('gps-camera-update-position', this.gpsUpdateListener);
             }
         });
 
+        // --- Global UI Event Listeners & Functions ---
+        // (These are called after the DOM is loaded, so their position here is fine)
         document.addEventListener('DOMContentLoaded', function() {
             const responseToggleBtn = document.getElementById('response-toggle');
             const responseFormContainer = document.getElementById('response-form-container');
@@ -406,14 +357,14 @@
             const mainMessageDisplay = document.getElementById('main-message-display');
             const dynamicResponseTextDisplay = document.getElementById('dynamic-response-text-display');
 
-            if (responseToggleBtn && responseFormContainer) {
+            if (responseToggleBtn && responseFormContainer) { /* ... listener same ... */
                 responseToggleBtn.addEventListener('click', function () {
                     const isFormVisible = responseFormContainer.style.display === 'block';
                     responseFormContainer.style.display = isFormVisible ? 'none' : 'block';
                     responseToggleBtn.textContent = isFormVisible ? '+' : '✕';
                 });
             }
-            if (resetBtn && gardenEntity) {
+            if (resetBtn && gardenEntity) { /* ... listener same ... */
                 resetBtn.addEventListener('click', function() {
                     gardenEntity.setAttribute('visible', false);
                     if(mainMessageDisplay) mainMessageDisplay.style.display = 'none';
@@ -431,7 +382,7 @@
                     console.log("Reset Button: Garden hidden. Ready for re-activation.");
                 });
             }
-             if (gardenResponseForm) {
+             if (gardenResponseForm) { /* ... listener same, remember to REPLACE SCRIPT URL ... */
                 gardenResponseForm.addEventListener('submit', function(e) {
                     e.preventDefault();
                     const name = gardenResponseForm.name.value;
@@ -463,7 +414,7 @@
                         });
                 });
             }
-            const permissionOverlay = document.getElementById('permission-overlay');
+            const permissionOverlay = document.getElementById('permission-overlay'); /* ... listener same ... */
             const permissionBtn = document.getElementById('permission-btn');
             const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
             if (isIOS && typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
@@ -489,7 +440,7 @@
         let serverResponses = []; let currentResponseIndex = -1; let responseIntervalId = null;
         const dynamicResponseTextDisplayGlobal = document.getElementById('dynamic-response-text-display');
 
-        function loadAndCycleResponses(isInitialCall = false) {
+        function loadAndCycleResponses(isInitialCall = false) { /* ... function same, remember to REPLACE SCRIPT URL ... */
             const fetchScriptURL = 'YOUR_GOOGLE_APPS_SCRIPT_URL_HERE_FOR_GET'; // <<< REPLACE
             const defaultResponses = [
                 { name: "Gardener", message: "Seeds of hope grow here." },
@@ -513,7 +464,7 @@
                     } else { if(dynamicResponseTextDisplayGlobal) dynamicResponseTextDisplayGlobal.style.display = 'none'; }
                 });
         }
-        function showNextResponse() {
+        function showNextResponse() { /* ... function same ... */
              if (!serverResponses || serverResponses.length === 0 || !dynamicResponseTextDisplayGlobal) return;
             currentResponseIndex = (currentResponseIndex + 1) % serverResponses.length;
             const response = serverResponses[currentResponseIndex];
@@ -521,15 +472,69 @@
             dynamicResponseTextDisplayGlobal.style.opacity = 0;
             setTimeout(() => { dynamicResponseTextDisplayGlobal.style.opacity = 1; }, 100);
         }
-        function toRadians(degrees) { return degrees * Math.PI / 180; }
-        function toDegrees(radians) { return radians * 180 / Math.PI; }
-        function calculateDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371e3; const φ1 = toRadians(lat1); const φ2 = toRadians(lat2);
-            const Δφ = toRadians(lat2 - lat1); const Δλ = toRadians(lon2 - lon1);
-            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-            return R * c;
-        }
     </script>
-</body>
+</head>
+
+<body>
+    <div id="loading">
+        <h1>Why can't...?</h1>
+        <p>Initializing garden experience...</p>
+         <p style="font-size: 0.8em; margin-top: 20px;">(Ensure you allow Camera and Location access and are using HTTPS)</p>
+    </div>
+    <div class="arjs-loader-display">
+        <p>Starting AR... Requesting permissions...</p>
+    </div>
+    <div id="permission-overlay">
+         <h2>Permissions Required</h2>
+         <p>This AR experience needs access to device motion sensors.</p>
+         <button id="permission-btn">Allow Motion Sensors</button>
+    </div>
+    <div id="main-message-display" class="message-container-style" style="display: none;">
+        <p>Why can't this be a community garden?</p>
+    </div>
+    <div id="dynamic-response-text-display" class="dynamic-response-display-style"></div>
+    <div id="instructions">Point your camera around. The garden will appear if your GPS is active.</div>
+    <div class="controls">
+        <button id="response-toggle" class="btn" title="Share Thoughts">+</button>
+        <button id="reset-btn" class="btn" title="Hide Garden">↺</button>
+    </div>
+    <div id="response-form-container">
+        <h3>Share Your Thoughts</h3>
+        <form id="garden-response-form-actual">
+            <label for="name">Your Name:</label>
+            <input type="text" id="name" name="name" placeholder="e.g., Alex P." required>
+            <label for="form-message">Why can't this be a community garden?</label>
+            <textarea id="form-message" name="message" placeholder="Your ideas..." required></textarea>
+            <button type="submit">Submit Idea</button>
+        </form>
+        <div id="response-status"></div>
+    </div>
+    <div id="debug-info"></div>
+
+    <a-scene
+        id="ar-scene"
+        vr-mode-ui="enabled: false"
+        embedded
+        renderer="logarithmicDepthBuffer: true; colorManagement: true; physicallyCorrectLights: true;"
+        arjs="
+            sourceType: webcam;
+            trackingMethod: best;
+            debugUIEnabled: false;
+            detectionMode: mono_and_matrix;
+            matrixCodeType: 3x3;
+            sourceWidth: 1280; sourceHeight: 960;
+            displayWidth: 1280; displayHeight: 960;"
+        location-check="targetLat: 35.995666; targetLon: -78.910711; activationThreshold: 75; debugElement: #debug-info"
+        loading-screen-manager>
+
+        <a-entity id="gps-garden"
+            gps-projected-entity-place="latitude: 35.995666; longitude: -78.910711;"
+            visible="false"
+            styled-flower-garden="flowerCount: 150; radius: 3; groundRadius: 3.05;">
+        </a-entity>
+
+        <a-camera gps-new-camera="gpsMinDistance: 5; gpsTimeInterval: 1000; simulateLatitude: 35.995666; simulateLongitude: -78.910711;"
+                  rotation-reader></a-camera>
+    </a-scene>
+    </body>
 </html>
